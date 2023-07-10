@@ -14,7 +14,7 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
         }
         else
         {
-            writeFile.open("/home/kim/tocabi_ws/src/tocabi_cc/result/data.csv", std::ofstream::out | std::ofstream::app);
+            writeFile.open("/home/dyros/tocabi_ws/src/tocabi_cc/result/data.csv", std::ofstream::out | std::ofstream::app);
         }
         writeFile << std::fixed << std::setprecision(8);
     }
@@ -29,13 +29,13 @@ Eigen::VectorQd CustomController::getControl()
     return ControlVal_;
 }
 
-void CustomController::loadNetwork()
+void CustomController::loadNetwork() //rui weight 불러오기 weight TocabiRL 파일 저장된 12개 파일 저장해주면 됨
 {
     state_.setZero();
     rl_action_.setZero();
 
 
-    string cur_path = "/home/kim/tocabi_ws/src/tocabi_cc/";
+    string cur_path = "/home/dyros/tocabi_ws/src/tocabi_cc/";
 
     if (is_on_robot_)
     {
@@ -291,7 +291,7 @@ void CustomController::loadNetwork()
     }
 }
 
-void CustomController::initVariable()
+void CustomController::initVariable() //rui 변수 초기화
 {    
     policy_net_w0_.resize(num_hidden, num_state);
     policy_net_b0_.resize(num_hidden, 1);
@@ -370,7 +370,7 @@ Eigen::Vector3d CustomController::mat2euler(Eigen::Matrix3d mat)
     return euler;
 }
 
-void CustomController::processNoise()
+void CustomController::processNoise() //rui noise 만들어주기
 {
     time_cur_ = rd_cc_.control_time_us_ / 1e6;
     if (is_on_robot_)
@@ -409,7 +409,7 @@ void CustomController::processNoise()
     time_pre_ = time_cur_;
 }
 
-void CustomController::processObservation()
+void CustomController::processObservation() //rui observation 만들어주기 
 {
     int data_idx = 0;
 
@@ -493,7 +493,7 @@ void CustomController::processObservation()
 
 }
 
-void CustomController::feedforwardPolicy()
+void CustomController::feedforwardPolicy() //rui mlp feedforward
 {
     hidden_layer1_ = policy_net_w0_ * state_ + policy_net_b0_;
     for (int i = 0; i < num_hidden; i++) 
@@ -529,7 +529,7 @@ void CustomController::feedforwardPolicy()
     
 }
 
-void CustomController::computeSlow()
+void CustomController::computeSlow() //rui main
 {
     copyRobotData(rd_);
     if (rd_cc_.tc_.mode == 7)
@@ -556,8 +556,8 @@ void CustomController::computeSlow()
 
         processNoise();
 
-        // processObservation and feedforwardPolicy mean time: 15 us, max 53 us
-        if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 > 1/250.0)
+        // processObservation and feedforwardPolicy mean time: 15 us, max 53 us 
+        if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 > 1/250.0) //rui 250hz 변수만들어서 바꿔주기
         {
             processObservation();
             feedforwardPolicy();
@@ -575,7 +575,7 @@ void CustomController::computeSlow()
             torque_rl_(i) = kp_(i,i) * (q_init_(i) - q_noise_(i)) - kv_(i,i)*q_vel_noise_(i);
         }
         
-        if (rd_cc_.control_time_us_ < start_time_ + 0.2e6)
+        if (rd_cc_.control_time_us_ < start_time_ + 0.2e6) //rui torque 쏴주는것
         {
             for (int i = 0; i <MODEL_DOF; i++)
             {
@@ -603,7 +603,7 @@ void CustomController::computeSlow()
             rd_.torque_desired = kp_ * (q_stop_ - q_noise_) - kv_*q_vel_noise_;
         }
 
-        if (is_write_file_)
+        if (is_write_file_) //rui 파일 write
         {
             if ((rd_cc_.control_time_us_ - time_write_pre_)/1e6 > 1/240.0)
             {
