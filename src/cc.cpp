@@ -557,12 +557,12 @@ void CustomController::computeSlow() //rui main
         processNoise();
 
         // processObservation and feedforwardPolicy mean time: 15 us, max 53 us 
-        if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 > 1/250.0) //rui 250hz 변수만들어서 바꿔주기
+        if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 > freq_scaler_) //rui 250hz 변수만들어서 바꿔주기 default 1/250.0
         {
             processObservation();
             feedforwardPolicy();
             
-            action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*1/250.0, 0.0, 1/250.0);
+            action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_);
             time_inference_pre_ = rd_cc_.control_time_us_;
         }
 
@@ -588,16 +588,16 @@ void CustomController::computeSlow() //rui main
              rd_.torque_desired = torque_rl_;
         }
 
-        if (value_ < 50.0)
-        {
-            if (stop_by_value_thres_ == false)
-            {
-                stop_by_value_thres_ = true;
-                stop_start_time_ = rd_cc_.control_time_us_;
-                q_stop_ = q_noise_;
-                std::cout << "Stop by Value Function" << std::endl;
-            }
-        }
+        // if (value_ < 50.0)
+        // {
+        //     if (stop_by_value_thres_ == false)
+        //     {
+        //         stop_by_value_thres_ = true;
+        //         stop_start_time_ = rd_cc_.control_time_us_;
+        //         q_stop_ = q_noise_;
+        //         std::cout << "Stop by Value Function" << std::endl;
+        //     }
+        // }
         if (stop_by_value_thres_)
         {
             rd_.torque_desired = kp_ * (q_stop_ - q_noise_) - kv_*q_vel_noise_;
@@ -609,7 +609,7 @@ void CustomController::computeSlow() //rui main
             {
                 writeFile << (rd_cc_.control_time_us_ - start_time_)/1e6 << "\t";
                 writeFile << phase_ << "\t";
-                writeFile << DyrosMath::minmax_cut(rl_action_(num_action-1)*1/250.0, 0.0, 1/250.0) << "\t";
+                writeFile << DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_) << "\t";
 
                 writeFile << rd_cc_.LF_FT.transpose() << "\t";
                 writeFile << rd_cc_.RF_FT.transpose() << "\t";
