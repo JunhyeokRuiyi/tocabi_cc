@@ -1,4 +1,5 @@
 #include "cc.h"
+#include <rbdl/Kinematics.h>
 
 using namespace TOCABI;
 
@@ -588,16 +589,16 @@ void CustomController::computeSlow() //rui main
              rd_.torque_desired = torque_rl_;
         }
 
-        if (value_ < 50.0)
-        {
-            if (stop_by_value_thres_ == false)
-            {
-                stop_by_value_thres_ = true;
-                stop_start_time_ = rd_cc_.control_time_us_;
-                q_stop_ = q_noise_;
-                std::cout << "Stop by Value Function" << std::endl;
-            }
-        }
+        // if (value_ < 50.0)
+        // {
+        //     if (stop_by_value_thres_ == false)
+        //     {
+        //         stop_by_value_thres_ = true;
+        //         stop_start_time_ = rd_cc_.control_time_us_;
+        //         q_stop_ = q_noise_;
+        //         std::cout << "Stop by Value Function" << std::endl;
+        //     }
+        // }
         if (stop_by_value_thres_)
         {
             rd_.torque_desired = kp_ * (q_stop_ - q_noise_) - kv_*q_vel_noise_;
@@ -623,9 +624,9 @@ void CustomController::computeSlow() //rui main
                 writeFile << rd_cc_.q_virtual_.transpose() << "\t";
 
                 writeFile << value_ << "\t" << stop_by_value_thres_;
-               
+                
                 writeFile << std::endl;
-
+                
                 time_write_pre_ = rd_cc_.control_time_us_;
             }
         }

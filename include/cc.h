@@ -109,7 +109,7 @@ public:
     double target_vel_x_ = 0.0;
     double target_vel_y_ = 0.0;
 
-    float freq_scaler_ = 1/100.0;
+    float freq_scaler_ = 1/50.0;
 
 private:
     Eigen::VectorQd ControlVal_;
