@@ -1,5 +1,5 @@
-d1 = load('data.csv');
-d2 = load('data_low_frictionloss.csv');
+d1 = load(['data_76.csv']);
+% d2 = load('data_low_frictionloss.csv');
 
 figure();
 for i=1:12
@@ -19,7 +19,7 @@ end
 
 %%
 clear all
-d3 = load('data.csv');
+d3 = load('data_76.csv');
 
 figure();
 
@@ -30,7 +30,7 @@ plot(d3(:,1),d3(:,12))
 %% Value Function
 % 1                writeFile << (rd_cc_.control_time_us_ - start_time_)/1e6 << "\t";
 % 2                writeFile << phase_ << "\t";
-% 3                writeFile << DyrosMath::minmax_cut(rl_action_(num_action-1)*1/250.0, 0.0, 1/250.0) << "\t";
+% 3                writeFile << DyrosMath::minmax_cut(s_(num_action-1)*1/250.0, 0.0, 1/250.0) << "\t";
 % 
 % 4-9                  writeFile << rd_cc_.LF_FT.transpose() << "\t";
 % 10-15                writeFile << rd_cc_.RF_FT.transpose() << "\t";
@@ -45,14 +45,14 @@ plot(d3(:,1),d3(:,12))
 
 % 206 207                writeFile << value_ << "\t" << stop_by_value_thres_;
 clear d
-d = load('data.csv');
+d = load('data_76.csv');
 
 figure()
 yyaxis left
-plot(d(:,1),d(:,206), 'LineWidth', 7)
+plot(d(:,1),d(:,206), 'LineWidth', 3)
 ylabel('Value','FontSize', 40, 'FontWeight','bold')
 yyaxis right
-plot(d(:,1),d(:,end), 'LineWidth', 7)
+plot(d(:,1),d(:,end), 'LineWidth', 3)
 ylabel('IsStopped','FontSize', 40, 'FontWeight','bold')
 
 set(gca,'FontSize',20, 'FontWeight','bold')

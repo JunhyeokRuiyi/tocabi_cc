@@ -566,7 +566,7 @@ void CustomController::computeSlow() //rui main
             time_inference_pre_ = rd_cc_.control_time_us_;
         }
 
-        for (int i = 0; i < num_actuator_action; i++)
+        for (int i = 0; i < num_actuator_action; i++) //rui lower leg 1~12
         {
             torque_rl_(i) = DyrosMath::minmax_cut(rl_action_(i)*torque_bound_(i), -torque_bound_(i), torque_bound_(i));
         }
@@ -607,22 +607,22 @@ void CustomController::computeSlow() //rui main
         {
             if ((rd_cc_.control_time_us_ - time_write_pre_)/1e6 > 1/240.0)
             {
-                writeFile << (rd_cc_.control_time_us_ - start_time_)/1e6 << "\t";
-                writeFile << phase_ << "\t";
-                writeFile << DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_) << "\t";
+                writeFile << (rd_cc_.control_time_us_ - start_time_)/1e6 << "\t";//rui A 1
+                writeFile << phase_ << "\t";//rui B 1
+                writeFile << DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_) << "\t";//rui C 1
 
-                writeFile << rd_cc_.LF_FT.transpose() << "\t";
-                writeFile << rd_cc_.RF_FT.transpose() << "\t";
-                writeFile << rd_cc_.LF_CF_FT.transpose() << "\t";
-                writeFile << rd_cc_.RF_CF_FT.transpose() << "\t";
+                writeFile << rd_cc_.LF_FT.transpose() << "\t";//rui D 6
+                writeFile << rd_cc_.RF_FT.transpose() << "\t";//rui E 6
+                writeFile << rd_cc_.LF_CF_FT.transpose() << "\t";//rui F 6
+                writeFile << rd_cc_.RF_CF_FT.transpose() << "\t";//rui G 6
 
-                writeFile << rd_cc_.torque_desired.transpose()  << "\t";
-                writeFile << q_noise_.transpose() << "\t";
-                writeFile << q_dot_lpf_.transpose() << "\t";
-                writeFile << rd_cc_.q_dot_virtual_.transpose() << "\t";
-                writeFile << rd_cc_.q_virtual_.transpose() << "\t";
+                writeFile << rd_cc_.torque_desired.transpose()  << "\t";//rui H 33
+                writeFile << q_noise_.transpose() << "\t";//rui I 33
+                writeFile << q_dot_lpf_.transpose() << "\t";//rui J 33
+                writeFile << rd_cc_.q_dot_virtual_.transpose() << "\t";//rui K 33
+                writeFile << rd_cc_.q_virtual_.transpose() << "\t";//rui L 33
 
-                writeFile << value_ << "\t" << stop_by_value_thres_;
+                writeFile << value_ << "\t" << stop_by_value_thres_; //rui M N 2
                
                 writeFile << std::endl;
 

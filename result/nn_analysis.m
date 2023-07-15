@@ -1,6 +1,6 @@
 %%
 clear all;
-d = load('data.csv');
+d = load('data_76.csv');
 
 %%
 t = d(:,1);
