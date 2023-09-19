@@ -68,6 +68,9 @@ public:
     Eigen::MatrixXd state_buffer_;
     Eigen::MatrixXd state_mean_;
     Eigen::MatrixXd state_var_;
+    Eigen::MatrixXd state_2000Hz_;
+    Eigen::MatrixXd observation_buffer_;
+    Eigen::MatrixXd action_buffer_;
 
     std::ofstream writeFile;
 
@@ -92,6 +95,7 @@ public:
 
     float start_time_;
     float time_inference_pre_ = 0.0;
+    float time_inputTorque_pre_ = 0.0; //rui testing
     float time_write_pre_ = 0.0;
 
     double time_cur_;
@@ -110,6 +114,11 @@ public:
     double target_vel_y_ = 0.0;
 
     float freq_scaler_ = 1/250.0;
+    float freq_tester_2000HZ = 1/2000.0;
+    int delay_step_action = 1;
+    int delay_step_observation = 1;
+    int buffer_length_ = 40;
+
 
 private:
     Eigen::VectorQd ControlVal_;

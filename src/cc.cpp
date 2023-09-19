@@ -313,6 +313,8 @@ void CustomController::initVariable() //rui 변수 초기화
     value_hidden_layer1_.resize(num_hidden, 1);
     value_hidden_layer2_.resize(num_hidden, 1);
     
+    observation_buffer_.resize(num_state*buffer_length_, 1); //rui
+    action_buffer_.resize(num_action*buffer_length_, 1); //rui
     state_cur_.resize(num_cur_state, 1);
     state_.resize(num_state, 1);
     state_buffer_.resize(num_cur_state*num_state_skip*num_state_hist, 1);
@@ -422,19 +424,19 @@ void CustomController::processObservation() //rui observation 만들어주기
 
     euler_angle_ = DyrosMath::rot2Euler_tf(q.toRotationMatrix());
 
-    state_cur_(data_idx) = euler_angle_(0);
+    state_cur_(data_idx) = euler_angle_(0); //rui 1
     data_idx++;
 
-    state_cur_(data_idx) = euler_angle_(1);
+    state_cur_(data_idx) = euler_angle_(1); //rui 1
     data_idx++;
 
-    state_cur_(data_idx) = euler_angle_(2);
+    state_cur_(data_idx) = euler_angle_(2); //rui 1
     data_idx++;
 
 
     for (int i = 0; i < num_actuator_action; i++)
     {
-        state_cur_(data_idx) = q_noise_(i);
+        state_cur_(data_idx) = q_noise_(i); //rui 12
         data_idx++;
     }
 
@@ -442,7 +444,7 @@ void CustomController::processObservation() //rui observation 만들어주기
     {
         if (is_on_robot_)
         {
-            state_cur_(data_idx) = q_vel_noise_(i);
+            state_cur_(data_idx) = q_vel_noise_(i); //rui 12
         }
         else
         {
@@ -453,15 +455,15 @@ void CustomController::processObservation() //rui observation 만들어주기
 
     float squat_duration = 1.7995;
     phase_ = std::fmod((rd_cc_.control_time_us_-start_time_)/1e6 + action_dt_accumulate_, squat_duration) / squat_duration;
-    state_cur_(data_idx) = sin(2*M_PI*phase_);
+    state_cur_(data_idx) = sin(2*M_PI*phase_); //rui 1
     data_idx++;
-    state_cur_(data_idx) = cos(2*M_PI*phase_);
-    data_idx++;
-
-    state_cur_(data_idx) = 0.2;//target_vel_x_;
+    state_cur_(data_idx) = cos(2*M_PI*phase_); //rui 1
     data_idx++;
 
-    state_cur_(data_idx) = target_vel_y_;
+    state_cur_(data_idx) = 0.2;//target_vel_x_; //rui 1
+    data_idx++;
+
+    state_cur_(data_idx) = target_vel_y_; //rui 1
     data_idx++;
 
     // state_cur_(data_idx) = rd_cc_.LF_FT(2);
@@ -472,25 +474,35 @@ void CustomController::processObservation() //rui observation 만들어주기
 
     for (int i = 0; i <num_actuator_action; i++) 
     {
-        state_cur_(data_idx) = DyrosMath::minmax_cut(rl_action_(i), -1.0, 1.0);
+        state_cur_(data_idx) = DyrosMath::minmax_cut(rl_action_(i), -1.0, 1.0);  //rui 12
         data_idx++;
     }
-    state_cur_(data_idx) = DyrosMath::minmax_cut(rl_action_(num_actuator_action), 0.0, 1.0);
+    state_cur_(data_idx) = DyrosMath::minmax_cut(rl_action_(num_actuator_action), 0.0, 1.0); //rui 1?
     data_idx++;
     
-    state_buffer_.block(0, 0, num_cur_state*(num_state_skip*num_state_hist-1),1) = state_buffer_.block(num_cur_state, 0, num_cur_state*(num_state_skip*num_state_hist-1),1);
-    state_buffer_.block(num_cur_state*(num_state_skip*num_state_hist-1), 0, num_cur_state,1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array();
+    state_buffer_.block(0, 0, num_cur_state*(num_state_skip*num_state_hist-1),1) = state_buffer_.block(num_cur_state, 0, num_cur_state*(num_state_skip*num_state_hist-1),1); //rui 0~396 = 44~440, 44개만큼 끌어오고
+    state_buffer_.block(num_cur_state*(num_state_skip*num_state_hist-1), 0, num_cur_state,1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array(); //rui 0~440 채워주기
 
     // Internal State First
-    for (int i = 0; i < num_state_hist; i++)
+    for (int i = 0; i < num_state_hist; i++) //rui num_state_hist --> 5 num_cur_internal_state --> 31 (base_ori, q_noise, q_vel_noise, phase_sin, phase_cos, target_vel_x, target_vel_y)
     {
-        state_.block(num_cur_internal_state*i, 0, num_cur_internal_state, 1) = state_buffer_.block(num_cur_state*(num_state_skip*(i+1)-1), 0, num_cur_internal_state, 1);
+        state_.block(num_cur_internal_state*i, 0, num_cur_internal_state, 1) = state_buffer_.block(num_cur_state*(num_state_skip*(i+1)-1), 0, num_cur_internal_state, 1); //rui (31xi) ~ (31xi)+31 = (44x(2x(i+1)-1)) ~ (44x(2x(i+1)-1))+31
     }
     // Action History Second
     for (int i = 0; i < num_state_hist-1; i++)
     {
-        state_.block(num_state_hist*num_cur_internal_state + num_action*i, 0, num_action, 1) = state_buffer_.block(num_cur_state*(num_state_skip*(i+1)) + num_cur_internal_state, 0, num_action, 1);
+        state_.block(num_state_hist*num_cur_internal_state + num_action*i, 0, num_action, 1) = state_buffer_.block(num_cur_state*(num_state_skip*(i+1)) + num_cur_internal_state, 0, num_action, 1); //rui (5x31+13xi) ~ (5x31+13xi)+13 = ((44x2x(i+1))+31) ~ ((44x2x(i+1))+31)+13
     }
+
+    // std::cout << "----------------state_cur----------------" << std::endl; //rui 44x1
+    // std::cout << "shape: " << state_cur_.rows() << "x" << state_cur_.cols() << std::endl;
+    // std::cout << state_cur_ << std::endl;
+    // std::cout << "----------------state_buffer----------------" << std::endl; //rui 440x1
+    // std::cout << "shape: " << state_buffer_.rows() << "x" << state_buffer_.cols() << std::endl;
+    // std::cout << state_buffer_<< std::endl;
+    // std::cout << "----------------state----------------" << std::endl; //rui 207x1
+    // std::cout << "shape: " << state_.rows() << "x" << state_.cols() << std::endl;
+    // std::cout << state_<< std::endl;
 
 }
 
@@ -557,15 +569,42 @@ void CustomController::computeSlow() //rui main
 
         processNoise();
 
+
+        if ((rd_cc_.control_time_us_ - time_inputTorque_pre_)/1.0e6 > freq_tester_2000HZ){
+            cout << "(rd_cc_.control_time_us_ - time_inputTorque_pre_)/1.0e6 2000Hz: " << (rd_cc_.control_time_us_ - time_inputTorque_pre_)/1.0e6 << endl;
+            cout << "(rd_cc_.control_time_us_ - time_inputTorque_pre_) 2000Hz: " << (rd_cc_.control_time_us_ - time_inputTorque_pre_) << endl;
+        }
+        processObservation(); //rui observation in 2000
+
+        //** put observation into buffer **//
+        observation_buffer_.block(0, 0, num_state*(buffer_length_-1),1) = observation_buffer_.block(num_state, 0, num_state*(buffer_length_-1),1); //rui 0~207x(bufferlength-1) = 207~207xbufferlength, 207개만큼 끌어오고
+        observation_buffer_.block(num_state*(buffer_length_-1), 0, num_state,1) = state_; //rui 새로운 observation으로 채워주기
+        
+        //** apply observation delay **//
+        state_ = observation_buffer_.block( num_state*(buffer_length_-delay_step_observation), 0, num_state, 1);
+
         // processObservation and feedforwardPolicy mean time: 15 us, max 53 us 
-        if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 > freq_scaler_) //rui 250hz 변수만들어서 바꿔주기 default 1/250.0
+        if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 > freq_scaler_) //rui 250hz 변수만들어서 바꿔주기 default 1/250.0 (control time - inference_time_pre)/ 이 250Hz, 0.004 초 지날때마다 inference
         {
-            processObservation();
-            feedforwardPolicy();
             
+
+            // processObservation();
+            feedforwardPolicy();
+
+        // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_tester_2000HZ, 0.0, freq_tester_2000HZ);
+                    
             action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_);
             time_inference_pre_ = rd_cc_.control_time_us_;
         }
+
+        time_inputTorque_pre_ = rd_cc_.control_time_us_;
+
+        //** put action into buffer **//
+        action_buffer_.block(0, 0, num_action*(buffer_length_-1),1) = action_buffer_.block(num_action, 0, num_action*(buffer_length_-1),1); //rui 0~13x(bufferlength-1) = 13~13xbufferlength, 12개만큼 끌어오고
+        action_buffer_.block(num_action*(buffer_length_-1), 0, num_action,1) = rl_action_; //rui 새로운 action로 채워주기
+        
+        //** apply action delay **//
+        rl_action_ = action_buffer_.block( num_action*(buffer_length_-delay_step_action), 0, num_action, 1);
 
         for (int i = 0; i < num_actuator_action; i++)
         {
@@ -576,6 +615,7 @@ void CustomController::computeSlow() //rui main
             torque_rl_(i) = kp_(i,i) * (q_init_(i) - q_noise_(i)) - kv_(i,i)*q_vel_noise_(i);
         }
         
+        //** torque 는 2000Hz 로 들어감 **//
         if (rd_cc_.control_time_us_ < start_time_ + 0.2e6) //rui torque 쏴주는것
         {
             for (int i = 0; i <MODEL_DOF; i++)
@@ -588,7 +628,7 @@ void CustomController::computeSlow() //rui main
         {
              rd_.torque_desired = torque_rl_;
         }
-
+        
         // if (value_ < 50.0)
         // {
         //     if (stop_by_value_thres_ == false)
