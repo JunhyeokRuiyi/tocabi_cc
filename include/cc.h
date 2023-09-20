@@ -38,6 +38,7 @@ public:
     static const int num_state_hist = 5;
     static const int num_state = num_cur_internal_state*num_state_hist+num_action*(num_state_hist-1);
     static const int num_hidden = 256;
+    static const int frameskip_custom = 8;//rui frameskip 250Hz -> 8, 200Hz -> 10, 150Hz -> 13, 125Hz -> 16, 100Hz -> 20, 62.5Hz -> 32, 50Hz -> 40, 40Hz -> 50 size
 
     Eigen::MatrixXd policy_net_w0_;
     Eigen::MatrixXd policy_net_b0_;
@@ -66,6 +67,7 @@ public:
     Eigen::MatrixXd state_;
     Eigen::MatrixXd state_cur_;
     Eigen::MatrixXd state_buffer_;
+    Eigen::MatrixXd state_buffer_2000_;
     Eigen::MatrixXd state_mean_;
     Eigen::MatrixXd state_var_;
     Eigen::MatrixXd state_2000Hz_;
@@ -95,7 +97,7 @@ public:
 
     float start_time_;
     float time_inference_pre_ = 0.0;
-    float time_inputTorque_pre_ = 0.0; //rui testing
+    float time_observation_pre_ = 0.0; //rui testing
     float time_write_pre_ = 0.0;
 
     double time_cur_;
