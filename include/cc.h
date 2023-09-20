@@ -113,11 +113,11 @@ public:
     double target_vel_x_ = 0.0;
     double target_vel_y_ = 0.0;
 
-    float freq_scaler_ = 1/250.0;
+    float freq_scaler_ = 1/62.5;
     float freq_tester_2000HZ = 1/2000.0;
     int delay_step_action = 1;
     int delay_step_observation = 1;
-    int buffer_length_ = 40;
+    int buffer_length_ = 64;
 
 
 private:

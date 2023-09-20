@@ -19,13 +19,13 @@ end
 
 %%
 clear all
-d3 = load('data.csv');
+d3 = load('./iserdata/data.csv');
 
 figure();
 
-plot(d3(:,1),d3(:,6))
+plot(d3(1:1000,1),d3(1:1000,6))
 hold on
-plot(d3(:,1),d3(:,12))
+plot(d3(1:1000,1),d3(1:1000,12))
 
 %% Value Function
 % 1                writeFile << (rd_cc_.control_time_us_ - start_time_)/1e6 << "\t";
