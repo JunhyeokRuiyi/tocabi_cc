@@ -16,7 +16,7 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
         }
         else
         {
-            writeFile.open("/home/dyros/tocabi_ws/src/tocabi_cc/result/iserdata/data_prosobs2000.csv", std::ofstream::out | std::ofstream::app);
+            writeFile.open("/home/dyros/tocabi_ws/src/tocabi_cc/result/iserdata/data_3.csv", std::ofstream::out | std::ofstream::app);
         }
         writeFile << std::fixed << std::setprecision(8);
     }
@@ -315,12 +315,12 @@ void CustomController::initVariable() //rui 변수 초기화
     value_hidden_layer1_.resize(num_hidden, 1);
     value_hidden_layer2_.resize(num_hidden, 1);
     
-    observation_buffer_.resize(num_state*buffer_length_, 1); //rui
-    action_buffer_.resize(num_action*buffer_length_, 1); //rui
+    action_buffer_.resize(num_action*frameskip_custom, 1); //rui
     state_cur_.resize(num_cur_state, 1);
     state_.resize(num_state, 1);
+    state_buffer_2000_.resize(num_cur_state*(num_state_skip*frameskip_custom*num_state_hist), 1);
     state_buffer_.resize(num_cur_state*num_state_skip*num_state_hist, 1);
-    
+    state_temp_.resize(num_cur_state*num_state_hist, 1);
     state_mean_.resize(num_cur_state, 1);
     state_var_.resize(num_cur_state, 1);
 
@@ -458,6 +458,7 @@ void CustomController::processObservation() //rui observation 만들어주기
 
     float squat_duration = 1.7995;
     phase_ = std::fmod((rd_cc_.control_time_us_-start_time_)/1e6 + action_dt_accumulate_, squat_duration) / squat_duration;
+    
     state_cur_(data_idx) = sin(2*M_PI*phase_); //rui 1
     data_idx++;
     state_cur_(data_idx) = cos(2*M_PI*phase_); //rui 1
@@ -484,22 +485,22 @@ void CustomController::processObservation() //rui observation 만들어주기
     data_idx++;
     
 
+//!
+    // // ** buffer size should be changed regarding to the policy frequency ** //
+    // state_buffer_.block(0, 0, num_cur_state*(num_state_skip*num_state_hist-1),1) = state_buffer_.block(num_cur_state, 0, num_cur_state*(num_state_skip*num_state_hist-1),1); //rui 0~396 = 44~440, 44개만큼 끌어오고
+    // state_buffer_.block(num_cur_state*(num_state_skip*num_state_hist-1), 0, num_cur_state,1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array(); //rui 0~440 채워주기
 
-    // ** buffer size should be changed regarding to the policy frequency ** //
-    state_buffer_.block(0, 0, num_cur_state*(num_state_skip*num_state_hist-1),1) = state_buffer_.block(num_cur_state, 0, num_cur_state*(num_state_skip*num_state_hist-1),1); //rui 0~396 = 44~440, 44개만큼 끌어오고
-    state_buffer_.block(num_cur_state*(num_state_skip*num_state_hist-1), 0, num_cur_state,1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array(); //rui 0~440 채워주기
-
-    // Internal State First
-    for (int i = 0; i < num_state_hist; i++) //rui num_state_hist --> 5 num_cur_internal_state --> 31 (base_ori, q_noise, q_vel_noise, phase_sin, phase_cos, target_vel_x, target_vel_y)
-    {
-        state_.block(num_cur_internal_state*i, 0, num_cur_internal_state, 1) = state_buffer_.block(num_cur_state*(num_state_skip*(i+1)-1), 0, num_cur_internal_state, 1); //rui (31xi) ~ (31xi)+31 = (44x(2x(i+1)-1)) ~ (44x(2x(i+1)-1))+31
-    }
-    // Action History Second
-    for (int i = 0; i < num_state_hist-1; i++)
-    {
-        state_.block(num_state_hist*num_cur_internal_state + num_action*i, 0, num_action, 1) = state_buffer_.block(num_cur_state*(num_state_skip*(i+1)) + num_cur_internal_state, 0, num_action, 1); //rui (5x31+13xi) ~ (5x31+13xi)+13 = ((44x2x(i+1))+31) ~ ((44x2x(i+1))+31)+13
-    }
-
+    // // Internal State First
+    // for (int i = 0; i < num_state_hist; i++) //rui num_state_hist --> 5 num_cur_internal_state --> 31 (base_ori, q_noise, q_vel_noise, phase_sin, phase_cos, target_vel_x, target_vel_y)
+    // {
+    //     state_.block(num_cur_internal_state*i, 0, num_cur_internal_state, 1) = state_buffer_.block(num_cur_state*(num_state_skip*(i+1)-1), 0, num_cur_internal_state, 1); //rui (31xi) ~ (31xi)+31 = (44x(2x(i+1)-1)) ~ (44x(2x(i+1)-1))+31 
+    // }
+    // // Action History Second
+    // for (int i = 0; i < num_state_hist-1; i++)
+    // {
+    //     state_.block(num_state_hist*num_cur_internal_state + num_action*i, 0, num_action, 1) = state_buffer_.block(num_cur_state*(num_state_skip*(i+1)) + num_cur_internal_state, 0, num_action, 1); //rui (5x31+13xi) ~ (5x31+13xi)+13 = ((44x2x(i+1))+31) ~ ((44x2x(i+1))+31)+13
+    // }
+//!
     // // std::cout << "----------------state_cur----------------" << std::endl; //rui 44x1
     // // std::cout << "shape: " << state_cur_.rows() << "x" << state_cur_.cols() << std::endl;
     // // std::cout << state_cur_ << std::endl;
@@ -568,10 +569,24 @@ void CustomController::computeSlow() //rui main
 
             processNoise();
             processObservation();
-            for (int i = 0; i < num_state_skip*num_state_hist; i++) 
+
+
+
+
+
+            // for (int i = 0; i < num_state_skip*num_state_hist; i++) 
+            // {
+            //     state_buffer_.block(num_cur_state*i, 0, num_cur_state, 1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array();
+            // }
+
+            
+
+            // //! 2000Hz
+            for (int i = 0; i < num_state_skip*frameskip_custom*num_state_hist; i++) //rui 0~2*8*5
             {
-                state_buffer_.block(num_cur_state*i, 0, num_cur_state, 1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array();
+                state_buffer_2000_.block(num_cur_state*i, 0, num_cur_state, 1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array();
             }
+            // //! 2000Hz
         }
 
         processNoise();
@@ -581,51 +596,57 @@ void CustomController::computeSlow() //rui main
         // //     cout << "(rd_cc_.control_time_us_ - time_inputTorque_pre_)/1.0e6 2000Hz: " << (rd_cc_.control_time_us_ - time_inputTorque_pre_)/1.0e6 << endl;
         // //     cout << "(rd_cc_.control_time_us_ - time_inputTorque_pre_) 2000Hz: " << (rd_cc_.control_time_us_ - time_inputTorque_pre_) << endl;
         // // }
-        processObservation(); //rui observation in 2000
+        // //! 2000Hz
+        processObservation(); //rui observation in 2000 44개를 받아옴
+
+        try {
+            YAML::Node node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/include/delay_config.yaml");
+            // auto delay = node["delay"];
+            auto action_delay_ = node["delay"]["action"].as<int>();
+            auto observation_delay_ = node["delay"]["observation"].as<int>();
+
+            action_delay = action_delay_;
+            observation_delay = observation_delay_;
+
+        }
+        catch(const YAML::BadFile& e) {
+            std::cerr << e.msg << std::endl;
+        }
+        catch (YAML::ParserException &e){
+            std::cerr << e.msg << std::endl;
+        }
+        // //! 2000Hz
         
-        // try {
-        //     YAML::Node node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/include/delay_config.yaml");
-        //     // auto delay = node["delay"];
-        //     auto action_delay = node["delay"]["action"].as<int>();
-        //     auto observation_delay = node["delay"]["observation"].as<int>();
+        // //! 2000Hz obs delay
+        // ** buffer size should be changed regarding to the policy frequency ** //
+        state_buffer_2000_.block(0, 0, num_cur_state*(num_state_skip*num_state_hist*frameskip_custom-1),1) = state_buffer_2000_.block(num_cur_state, 0, num_cur_state*(num_state_skip*num_state_hist*frameskip_custom-1),1); //rui 0~44*(2*5*8-1) = 44~44*(2*5*8), 44개만큼 끌어오고
+        state_buffer_2000_.block(num_cur_state*(num_state_skip*num_state_hist*frameskip_custom-1), 0, num_cur_state,1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array(); //rui 0~44*(2*5*8) 44개 새로 채워주기
+        // ** giving delay ** //
+        for (int i = 0; i < num_state_hist; i++){//rui num_state_hist --> 5 개의 0~44 
+            state_temp_.block(num_cur_state*(i), 0, num_cur_state, 1) = state_buffer_2000_.block(num_cur_state*(num_state_skip*frameskip_custom*(i+1)-1 + observation_delay), 0, num_cur_state, 1); //rui 5 개의 44개 에다가 2000Hz에서 딜레이가 적용된 44크기의 state input
+        }
 
-        //     delay_step_action = action_delay;
-        //     delay_step_observation = observation_delay;
-
-        // }
-        // catch(const YAML::BadFile& e) {
-        //     std::cerr << e.msg << std::endl;
-        // }
-        // catch (YAML::ParserException &e){
-        //     std::cerr << e.msg << std::endl;
-        // }
+        // Internal State First
+        for (int i = 0; i < num_state_hist; i++) //rui num_state_hist --> 5 num_cur_internal_state --> 31 (base_ori, q_noise, q_vel_noise, phase_sin, phase_cos, target_vel_x, target_vel_y)
+        {
+            state_.block(num_cur_internal_state*i, 0, num_cur_internal_state, 1) = state_temp_.block(num_cur_state*(i), 0, num_cur_internal_state, 1); //rui (31xi) ~ (31xi)+31 = (44x(2x(i+1)-1)) ~ (44x(2x(i+1)-1))+31 
+        }
+        // Action History Second
+        for (int i = 0; i < num_state_hist-1; i++)
+        {
+            state_.block(num_state_hist*num_cur_internal_state + num_action*i, 0, num_action, 1) = state_temp_.block(num_cur_state*(i+1) + num_cur_internal_state, 0, num_action, 1); //rui (5x31+13xi) ~ (5x31+13xi)+13 = ((44x2x(i+1))+31) ~ ((44x2x(i+1))+31)+13
+        }
         
-        //** put observation into buffer **//
-        // observation_buffer_.block(0, 0, num_state*(buffer_length_-1),1) = observation_buffer_.block(num_state, 0, num_state*(buffer_length_-1),1); //rui 0~207x(bufferlength-1) = 207~207xbufferlength, 207개만큼 끌어오고
-        // // cout << "obs" << endl;
-        // // cout << observation_buffer_ << endl;
-        // // cout << "obs" << endl;
-
-        // observation_buffer_.block(num_state*(buffer_length_-1), 0, num_state,1) = state_; //rui 새로운 observation으로 채워주기
-        // // cout << "obs1" << endl;
-        // // cout << state_ << endl;
-        // // cout << "obs1" << endl;
-
-        //** apply observation delay **//
-        // state_ = observation_buffer_.block( num_state*(buffer_length_-delay_step_observation), 0, num_state, 1);
-        // // cout << "obs3" << endl;
-        // // cout << state_ << endl;
-        // // cout << "obs3" << endl;
+        // //! 2000Hz obs delay
         
         // processObservation and feedforwardPolicy mean time: 15 us, max 53 us 
         if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 > freq_scaler_) //rui 250hz 변수만들어서 바꿔주기 default 1/250.0 (control time - inference_time_pre)/ 이 250Hz, 0.004 초 지날때마다 inference
         {
             
-
-            // processObservation();
+            // processObservation(); //rui observation in 2000 44개를 받아옴
             feedforwardPolicy();
 
-                    
+
             // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_);
             time_inference_pre_ = rd_cc_.control_time_us_;
 
@@ -633,26 +654,17 @@ void CustomController::computeSlow() //rui main
         action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_tester_2000HZ, 0.0, freq_tester_2000HZ); 
 
         // time_inputTorque_pre_ = rd_cc_.control_time_us_;
-
-        
-
+        // //! 2000Hz act delay
         //** put action into buffer **//
+        action_buffer_.block(0, 0, num_action*(frameskip_custom-1),1) = action_buffer_.block(num_action, 0, num_action*(frameskip_custom-1),1); //rui 0~13x(8-1) = 13~13x8, 13개만큼 끌어오고
 
-        // action_buffer_.block(0, 0, num_action*(buffer_length_-1),1) = action_buffer_.block(num_action, 0, num_action*(buffer_length_-1),1); //rui 0~13x(bufferlength-1) = 13~13xbufferlength, 12개만큼 끌어오고
-        // // cout << "action_buffer_0" << endl;
-        // // cout << action_buffer_ << endl;
-        // // cout << "action_buffer_0" << endl;
-
-        // action_buffer_.block(num_action*(buffer_length_-1), 0, num_action,1) = rl_action_; //rui 새로운 action로 채워주기
-        // // cout << "action_buffer_1" << endl;
-        // // cout << action_buffer_ << endl;
-        // // cout << "action_buffer_1" << endl;
-        
+        action_buffer_.block(num_action*(frameskip_custom-1), 0, num_action,1) = rl_action_; //rui 새로운 action로 채워주기
         //** apply action delay **//
-        // rl_action_ = action_buffer_.block( num_action*(buffer_length_-delay_step_action), 0, num_action, 1);
-        // // cout << "rl_action_" << endl;
-        // // cout << rl_action_ << endl;
-        // // cout << "rl_action_" << endl;
+        rl_action_ = action_buffer_.block( num_action*(frameskip_custom + action_delay), 0, num_action, 1);
+        // //! 2000Hz act delay
+
+
+
 
         for (int i = 0; i < num_actuator_action; i++)
         {

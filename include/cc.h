@@ -26,6 +26,7 @@ public:
     void loadNetwork();
     void processNoise();
     void processObservation();
+    void processObservation2();
     void feedforwardPolicy();
     void initVariable();
     Eigen::Vector3d mat2euler(Eigen::Matrix3d mat);
@@ -36,9 +37,9 @@ public:
     static const int num_cur_internal_state = 31;
     static const int num_state_skip = 2;
     static const int num_state_hist = 5;
-    static const int num_state = num_cur_internal_state*num_state_hist+num_action*(num_state_hist-1);
+    static const int num_state = num_cur_internal_state*num_state_hist+num_action*(num_state_hist-1); //rui 207
     static const int num_hidden = 256;
-    static const int frameskip_custom = 8;//rui frameskip 250Hz -> 8, 200Hz -> 10, 150Hz -> 13, 125Hz -> 16, 100Hz -> 20, 62.5Hz -> 32, 50Hz -> 40, 40Hz -> 50 size
+    
 
     Eigen::MatrixXd policy_net_w0_;
     Eigen::MatrixXd policy_net_b0_;
@@ -67,7 +68,8 @@ public:
     Eigen::MatrixXd state_;
     Eigen::MatrixXd state_cur_;
     Eigen::MatrixXd state_buffer_;
-    Eigen::MatrixXd state_buffer_2000_;
+    Eigen::MatrixXd state_buffer_2000_; // rui
+    Eigen::MatrixXd state_temp_; // rui
     Eigen::MatrixXd state_mean_;
     Eigen::MatrixXd state_var_;
     Eigen::MatrixXd state_2000Hz_;
@@ -77,6 +79,7 @@ public:
     std::ofstream writeFile;
 
     float phase_ = 0.0;
+    float phase_2 = 0.0;
 
     bool is_on_robot_ = false;
     bool is_write_file_ = true;
@@ -103,6 +106,7 @@ public:
     double time_cur_;
     double time_pre_;
     double action_dt_accumulate_ = 0.0;
+    double action_dt_accumulate_2 = 0.0; //rui testing
 
     Eigen::Vector3d euler_angle_;
 
@@ -117,9 +121,10 @@ public:
 
     float freq_scaler_ = 1/62.5;
     float freq_tester_2000HZ = 1/2000.0;
-    int delay_step_action = 1;
-    int delay_step_observation = 1;
-    int buffer_length_ = 64;
+    int action_delay = 1;
+    int observation_delay = 1;
+    int frameskip_custom = 32;//rui frameskip 250Hz -> 8, 200Hz -> 10, 150Hz -> 13, 125Hz -> 16, 100Hz -> 20, 62.5Hz -> 32, 50Hz -> 40, 40Hz -> 50 size
+    bool just_after_init = true;
 
 
 private:
