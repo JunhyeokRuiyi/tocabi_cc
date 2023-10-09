@@ -16,7 +16,7 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
         }
         else
         {
-            writeFile.open("/home/dyros/tocabi_ws/src/tocabi_cc/result/iserdata/data_3.csv", std::ofstream::out | std::ofstream::app);
+            writeFile.open("/home/dyros/tocabi_ws/src/tocabi_cc/result/iserdata/data_orig.csv", std::ofstream::out | std::ofstream::app);
         }
         writeFile << std::fixed << std::setprecision(8);
     }
@@ -305,6 +305,7 @@ void CustomController::initVariable() //rui 변수 초기화
     hidden_layer1_.resize(num_hidden, 1);
     hidden_layer2_.resize(num_hidden, 1);
     rl_action_.resize(num_action, 1);
+    rl_action_2000_.resize(num_action, 1);
 
     value_net_w0_.resize(num_hidden, num_state);
     value_net_b0_.resize(num_hidden, 1);
@@ -315,7 +316,7 @@ void CustomController::initVariable() //rui 변수 초기화
     value_hidden_layer1_.resize(num_hidden, 1);
     value_hidden_layer2_.resize(num_hidden, 1);
     
-    action_buffer_.resize(num_action*frameskip_custom, 1); //rui
+    action_buffer_2000_.resize(num_action*(num_state_skip*frameskip_custom*num_state_hist), 1); //rui
     state_cur_.resize(num_cur_state, 1);
     state_.resize(num_state, 1);
     state_buffer_2000_.resize(num_cur_state*(num_state_skip*frameskip_custom*num_state_hist), 1);
@@ -623,7 +624,7 @@ void CustomController::computeSlow() //rui main
         state_buffer_2000_.block(num_cur_state*(num_state_skip*num_state_hist*frameskip_custom-1), 0, num_cur_state,1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array(); //rui 0~44*(2*5*8) 44개 새로 채워주기
         // ** giving delay ** //
         for (int i = 0; i < num_state_hist; i++){//rui num_state_hist --> 5 개의 0~44 
-            state_temp_.block(num_cur_state*(i), 0, num_cur_state, 1) = state_buffer_2000_.block(num_cur_state*(num_state_skip*frameskip_custom*(i+1)-1 + observation_delay), 0, num_cur_state, 1); //rui 5 개의 44개 에다가 2000Hz에서 딜레이가 적용된 44크기의 state input
+            state_temp_.block(num_cur_state*(i), 0, num_cur_state, 1) = state_buffer_2000_.block(num_cur_state*(num_state_skip*frameskip_custom*(i+1)-1 - observation_delay), 0, num_cur_state, 1); //rui 5 개의 44개 에다가 2000Hz에서 딜레이가 적용된 44크기의 state input
         }
 
         // Internal State First
@@ -646,30 +647,36 @@ void CustomController::computeSlow() //rui main
             // processObservation(); //rui observation in 2000 44개를 받아옴
             feedforwardPolicy();
 
-
             // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_);
             time_inference_pre_ = rd_cc_.control_time_us_;
 
         }
         action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_tester_2000HZ, 0.0, freq_tester_2000HZ); 
-
         // time_inputTorque_pre_ = rd_cc_.control_time_us_;
         // //! 2000Hz act delay
-        //** put action into buffer **//
-        action_buffer_.block(0, 0, num_action*(frameskip_custom-1),1) = action_buffer_.block(num_action, 0, num_action*(frameskip_custom-1),1); //rui 0~13x(8-1) = 13~13x8, 13개만큼 끌어오고
-
-        action_buffer_.block(num_action*(frameskip_custom-1), 0, num_action,1) = rl_action_; //rui 새로운 action로 채워주기
+        //** put action into buffer **//num_action*(num_state_skip*frameskip_custom*num_state_hist)
+        action_buffer_2000_.block(0, 0, num_action*(num_state_skip*frameskip_custom*num_state_hist-1),1) = action_buffer_2000_.block(num_action, 0, num_action*(num_state_skip*frameskip_custom*num_state_hist-1),1); //rui 0~13x(2*5*8-1) = 13~13x(2*5*8), 13개만큼 끌어오고
+        action_buffer_2000_.block(num_action*(num_state_skip*frameskip_custom*num_state_hist-1), 0, num_action,1) = rl_action_; //rui 새로운 action로 채워주기
         //** apply action delay **//
-        rl_action_ = action_buffer_.block( num_action*(frameskip_custom + action_delay), 0, num_action, 1);
+        if( action_buffer_length  <= action_delay){
+            rl_action_2000_ = action_buffer_2000_.block(num_action*(num_state_skip*frameskip_custom*num_state_hist-1 - action_buffer_length), 0, num_action, 1);
+            action_buffer_length++;
+        }
+        else{
+            rl_action_2000_ = action_buffer_2000_.block(num_action*(num_state_skip*frameskip_custom*num_state_hist-1 - action_delay), 0, num_action, 1);
+        }
         // //! 2000Hz act delay
 
-
-
-
+        // for (int i = 0; i < num_actuator_action; i++)
+        // {
+        //     torque_rl_(i) = DyrosMath::minmax_cut(rl_action_(i)*torque_bound_(i), -torque_bound_(i), torque_bound_(i));
+        // }
+        //! 2000Hz
         for (int i = 0; i < num_actuator_action; i++)
         {
-            torque_rl_(i) = DyrosMath::minmax_cut(rl_action_(i)*torque_bound_(i), -torque_bound_(i), torque_bound_(i));
+            torque_rl_(i) = DyrosMath::minmax_cut(rl_action_2000_(i)*torque_bound_(i), -torque_bound_(i), torque_bound_(i));
         }
+        //! 2000Hz
         for (int i = num_actuator_action; i < MODEL_DOF; i++)
         {
             torque_rl_(i) = kp_(i,i) * (q_init_(i) - q_noise_(i)) - kv_(i,i)*q_vel_noise_(i);
@@ -710,7 +717,10 @@ void CustomController::computeSlow() //rui main
             {
                 writeFile << (rd_cc_.control_time_us_ - start_time_)/1e6 << "\t";
                 writeFile << phase_ << "\t";
-                writeFile << DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_) << "\t";
+                // writeFile << DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_) << "\t";
+                //! 2000Hz
+                writeFile << DyrosMath::minmax_cut(rl_action_2000_(num_action-1)*freq_scaler_, 0.0, freq_scaler_) << "\t";
+                //! 2000Hz
 
                 writeFile << rd_cc_.LF_FT.transpose() << "\t";
                 writeFile << rd_cc_.RF_FT.transpose() << "\t";
