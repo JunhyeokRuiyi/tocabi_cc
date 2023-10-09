@@ -74,7 +74,7 @@ public:
     Eigen::MatrixXd state_var_;
     Eigen::MatrixXd state_2000Hz_;
     Eigen::MatrixXd observation_buffer_;
-    Eigen::MatrixXd action_buffer_;
+    Eigen::MatrixXd action_buffer_2000_; // rui
 
     std::ofstream writeFile;
 
@@ -125,6 +125,8 @@ public:
     int observation_delay = 1;
     int frameskip_custom = 32;//rui frameskip 250Hz -> 8, 200Hz -> 10, 150Hz -> 13, 125Hz -> 16, 100Hz -> 20, 62.5Hz -> 32, 50Hz -> 40, 40Hz -> 50 size
     bool just_after_init = true;
+    int action_buffer_length = 0;
+    Eigen::MatrixXd rl_action_2000_; //rui
 
 
 private:
