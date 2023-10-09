@@ -1,5 +1,5 @@
 delay:
-  action: -1
+  action: -0
   observation: -0
 frequnecy: 
   frameskip_custom: 32

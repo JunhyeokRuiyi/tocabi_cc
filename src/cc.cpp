@@ -16,7 +16,7 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
         }
         else
         {
-            writeFile.open("/home/dyros/tocabi_ws/src/tocabi_cc/result/iserdata/data_orig.csv", std::ofstream::out | std::ofstream::app);
+            writeFile.open("/home/dyros/tocabi_ws/src/tocabi_cc/result/iserdata/data_0.csv", std::ofstream::out | std::ofstream::app);
         }
         writeFile << std::fixed << std::setprecision(8);
     }
@@ -399,7 +399,7 @@ void CustomController::processNoise() //rui noise 만들어주기
         std::mt19937 gen(rd());
         std::uniform_real_distribution<> dis(-0.00001, 0.00001);
         for (int i = 0; i < MODEL_DOF; i++) {
-            q_noise_(i) = rd_cc_.q_virtual_(6+i) + dis(gen);
+            q_noise_(i) = rd_cc_.q_virtual_(6+i); // + dis(gen);
         }
         if (time_cur_ - time_pre_ > 0.0)
         {
