@@ -19,40 +19,40 @@ end
 
 %%
 clear all
-d3 = load('./iserdata/data_nodelay.csv');
+% d3 = load('./iserdata/data_nodelay.csv');
+% 
+% figure();
+% % observation 62.5Hz
+% plot(d3(2000:3000,1),d3(2000:3000,6))
+% hold on
+% plot(d3(2000:3000,1),d3(2000:3000,12))
+% 
+% d4 = load('./iserdata/data_orig.csv');
+% 
+% figure();
+% % observation 2000Hz
+% plot(d4(2000:3000,1),d4(2000:3000,6))
+% hold on
+% plot(d4(2000:3000,1),d4(2000:3000,12))
+% 
+% d5 = load('./iserdata/data_nodelay_w_buffer.csv');
+% 
+% figure();
+% % observation 2000Hz with buffer
+% plot(d5(2000:3000,1),d5(2000:3000,6))
+% hold on
+% plot(d5(2000:3000,1),d5(2000:3000,12))
+% 
+% 
+% d6 = load('./iserdata/data_nodelay_w_buffer_action_dt_accumulate_.csv');
+% % observation 2000Hz with buffer + action_dt_accumulate_ EDIT
+% figure();
+% % observation 2000Hz with buffer
+% plot(d6(2000:3000,1),d6(2000:3000,6))
+% hold on
+% plot(d6(2000:3000,1),d6(2000:3000,12))
 
-figure();
-% observation 62.5Hz
-plot(d3(2000:3000,1),d3(2000:3000,6))
-hold on
-plot(d3(2000:3000,1),d3(2000:3000,12))
-
-d4 = load('./iserdata/data_orig.csv');
-
-figure();
-% observation 2000Hz
-plot(d4(2000:3000,1),d4(2000:3000,6))
-hold on
-plot(d4(2000:3000,1),d4(2000:3000,12))
-
-d5 = load('./iserdata/data_nodelay_w_buffer.csv');
-
-figure();
-% observation 2000Hz with buffer
-plot(d5(2000:3000,1),d5(2000:3000,6))
-hold on
-plot(d5(2000:3000,1),d5(2000:3000,12))
-
-
-d6 = load('./iserdata/data_nodelay_w_buffer_action_dt_accumulate_.csv');
-% observation 2000Hz with buffer + action_dt_accumulate_ EDIT
-figure();
-% observation 2000Hz with buffer
-plot(d6(2000:3000,1),d6(2000:3000,6))
-hold on
-plot(d6(2000:3000,1),d6(2000:3000,12))
-
-d7 = load('./iserdata/data_prosobs2000.csv');
+d7 = load('./iserdata/data_orig.csv');
 % observation 2000Hz with buffer + action_dt_accumulate_ EDIT
 figure();
 % observation 2000Hz with buffer
