@@ -81,7 +81,7 @@ public:
     float phase_ = 0.0;
     float phase_2 = 0.0;
 
-    bool is_on_robot_ = false;
+    bool is_on_robot_ = true;
     bool is_write_file_ = true;
     Eigen::Matrix<double, MODEL_DOF, 1> q_dot_lpf_;
 
@@ -119,7 +119,7 @@ public:
     double target_vel_x_ = 0.0;
     double target_vel_y_ = 0.0;
 
-    float freq_scaler_ = 1/62.5;
+    float freq_scaler_ = 1/50.5;
     float freq_tester_2000HZ = 1/2000.0;
     int action_delay = 1;
     int observation_delay = 1;
