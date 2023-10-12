@@ -600,7 +600,27 @@ void CustomController::computeSlow() //rui main
         // //! 2000Hz
         processObservation(); //rui observation in 2000 44개를 받아옴
 
-        try {
+        
+        if(is_on_robot_) {
+            try {
+                YAML::Node node = YAML::LoadFile("/home/dyros/catkin_ws/src/tocabi_cc/include/delay_config.yaml");
+                // auto delay = node["delay"];
+                auto action_delay_ = node["delay"]["action"].as<int>();
+                auto observation_delay_ = node["delay"]["observation"].as<int>();
+
+                action_delay = action_delay_;
+                observation_delay = observation_delay_;
+
+            }
+            catch(const YAML::BadFile& e) {
+                std::cerr << e.msg << std::endl;
+            }
+            catch (YAML::ParserException &e){
+                std::cerr << e.msg << std::endl;
+            }
+        }
+        else{
+            try {
             YAML::Node node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/include/delay_config.yaml");
             // auto delay = node["delay"];
             auto action_delay_ = node["delay"]["action"].as<int>();
@@ -609,14 +629,17 @@ void CustomController::computeSlow() //rui main
             action_delay = action_delay_;
             observation_delay = observation_delay_;
 
-        }
-        catch(const YAML::BadFile& e) {
-            std::cerr << e.msg << std::endl;
-        }
-        catch (YAML::ParserException &e){
-            std::cerr << e.msg << std::endl;
+            }
+            catch(const YAML::BadFile& e) {
+                std::cerr << e.msg << std::endl;
+            }
+            catch (YAML::ParserException &e){
+                std::cerr << e.msg << std::endl;
+            }
         }
         // //! 2000Hz
+
+        cout << "a " << action_delay << "o " << observation_delay << " " << endl;
         
         // //! 2000Hz obs delay
         // ** buffer size should be changed regarding to the policy frequency ** //
@@ -706,6 +729,17 @@ void CustomController::computeSlow() //rui main
         //         std::cout << "Stop by Value Function" << std::endl;
         //     }
         // }
+
+        if (abs(state_cur_(0)) > 10.0*M_PI/180.0 || abs(state_cur_(1)) > 10.0*M_PI/180.0)
+        {
+            if (stop_by_value_thres_ == false)
+            {
+                stop_by_value_thres_ = true;
+                stop_start_time_ = rd_cc_.control_time_us_;
+                q_stop_ = q_noise_;
+                std::cout << "Stop by Value Function" << std::endl;
+            }
+        }
         if (stop_by_value_thres_)
         {
             rd_.torque_desired = kp_ * (q_stop_ - q_noise_) - kv_*q_vel_noise_;
@@ -743,50 +777,6 @@ void CustomController::computeSlow() //rui main
             }
 
             
-
-            basequat = self.sim.data.get_body_xquat("Neck_Link");
-            quat_desired = Quaternion(array=[1,0,0,0]);
-            baseQuatError = (quat_desired.conjugate * Quaternion(array=basequat)).angle;
-            mimic_body_orientation_reward =  0.3 * exp(-13.2*abs(baseQuatError));
-
-        
-            qpos_regulation = 0.35*exp(-4.0*(np.linalg.norm(target_data_qpos - qpos[7:])**2));
-
-            qvel_regulation = 0.05*exp(-0.01*(np.linalg.norm(self.init_qvel[6:] - qvel[6:])**2));
-
-            contact_force_penalty = 0.1*(exp(-0.0005*(np.linalg.norm(self.ft_left_foot) + np.linalg.norm(self.ft_right_foot))));
-            torque_regulation = 0.05*exp(-0.01*(np.linalg.norm(self.action_cur)));
-            torque_diff_regulation = 0.6*(exp(-0.01/250*(np.linalg.norm((self.action_cur - self.action_last)*(2000/self.frame_skip)))));
-            qacc_regulation = 0.05*exp(-20.0*(np.linalg.norm(self.qvel_pre - qvel[6:])**2));
-            body_vel_reward = 0.3*exp(-3.0*(np.linalg.norm(pelvis_vel_local[0:2] - self.target_vel)**2));
-            
-            double_support_force_diff_regulation = 0.0;
-            if ((self.mocap_data_idx < 300) or (3300 < self.mocap_data_idx and self.mocap_data_idx < 3600) or (1500 < self.mocap_data_idx and self.mocap_data_idx < 2100)) //rui DSP
-                if (right_foot_contact and left_foot_contact)
-                    foot_contact_reward = 0.2;
-                else
-                    foot_contact_reward = 0.0;
-                double_support_force_diff_regulation = 0.0;
-            else if (300 < self.mocap_data_idx and self.mocap_data_idx < 1500)
-                if (right_foot_contact and not left_foot_contact)
-                    foot_contact_reward = 0.2;
-                else
-                    foot_contact_reward = 0.0;
-            else
-                if (not right_foot_contact and left_foot_contact):
-                    foot_contact_reward = 0.2;
-                else
-                    foot_contact_reward = 0.0;
-            contact_force_diff_regulation = 0.2*exp(-0.01/250*(np.linalg.norm((self.ft_left_foot - self.ft_left_foot_pre)*(2000/self.frame_skip)) + np.linalg.norm((self.ft_right_foot - self.ft_right_foot_pre)*(2000/self.frame_skip))));
-            double_support_force_diff_regulation = 0.0;
-            
-            force_thres_penalty = 0.0;
-            if ((abs(self.ft_left_foot[2]) > 1.4 * 9.81 * sum(self.model.body_mass)) or (abs(self.ft_right_foot[2]) > 1.4 * 9.81 * sum(self.model.body_mass)))
-                force_thres_penalty = -0.08;
-            force_diff_thres_penalty = 0.0;
-            if ((abs(self.ft_left_foot[2] - self.ft_left_foot_pre[2]) >  0.5 * 9.81 * sum(self.model.body_mass)) or (abs(self.ft_right_foot[2] - self.ft_right_foot_pre[2]) > 0.5 * 9.81 * sum(self.model.body_mass)))
-                force_diff_thres_penalty = -0.05;
-            force_ref_reward = 0.1*exp(-0.001*(np.linalg.norm(self.ft_left_foot[2] - weight_scale*self.mocap_data[self.mocap_data_idx,34]))) + 0.1*exp(-0.001*(np.linalg.norm(self.ft_right_foot[2] - weight_scale*self.mocap_data[self.mocap_data_idx,35])));
         }
 
     }
