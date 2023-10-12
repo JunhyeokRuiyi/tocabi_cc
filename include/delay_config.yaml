@@ -1,6 +1,6 @@
 delay:
-  action: -0
-  observation: -0
+  action: 0
+  observation: 20
 frequnecy: 
   frameskip_custom: 32
   freq: 62.5
