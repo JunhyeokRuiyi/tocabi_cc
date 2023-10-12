@@ -12,7 +12,7 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
     {
         if (is_on_robot_)
         {
-            writeFile.open("/home/dyros/catkin_ws/src/tocabi_cc/result/iserdata/data.csv", std::ofstream::out | std::ofstream::app);
+            writeFile.open("/home/dyros/catkin_ws/src/tocabi_cc/result/iserdata/data_231012_250_.csv", std::ofstream::out | std::ofstream::app);
         }
         else
         {
@@ -621,13 +621,13 @@ void CustomController::computeSlow() //rui main
         }
         else{
             try {
-            YAML::Node node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/include/delay_config.yaml");
-            // auto delay = node["delay"];
-            auto action_delay_ = node["delay"]["action"].as<int>();
-            auto observation_delay_ = node["delay"]["observation"].as<int>();
+                YAML::Node node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/include/delay_config.yaml");
+                // auto delay = node["delay"];
+                auto action_delay_ = node["delay"]["action"].as<int>();
+                auto observation_delay_ = node["delay"]["observation"].as<int>();
 
-            action_delay = action_delay_;
-            observation_delay = observation_delay_;
+                action_delay = action_delay_;
+                observation_delay = observation_delay_;
 
             }
             catch(const YAML::BadFile& e) {
