@@ -117,6 +117,7 @@ public:
     ros::Subscriber joy_sub_;
 
     double target_vel_x_ = 0.0;
+    double target_vel_x_yaml = 0.0;
     double target_vel_y_ = 0.0;
 
     float freq_scaler_ = 1/62.5;
