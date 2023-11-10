@@ -126,6 +126,7 @@ public:
     int frameskip_custom = 50;//rui frameskip 250Hz -> 8, 200Hz -> 10, 150Hz -> 13, 125Hz -> 16, 100Hz -> 20, 62.5Hz -> 32, 50Hz -> 40, 40Hz -> 50 size
     bool just_after_init = true;
     int action_buffer_length = 0;
+    std::string data_path;
     Eigen::MatrixXd rl_action_2000_; //rui
 
 
