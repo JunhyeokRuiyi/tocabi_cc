@@ -13,6 +13,8 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
             YAML::Node node = YAML::LoadFile("/home/dyros/catkin_ws/src/tocabi_cc/include/delay_config.yaml");
             // auto delay = node["delay"];
             auto data_path_ = node["result"]["real"].as<std::string>();
+            auto target_vel_x_yaml_ = node["target_vel"]["x"].as<double>();
+            target_vel_x_yaml = target_vel_x_yaml_;
             data_path = data_path_;
 
 
@@ -29,8 +31,9 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
             YAML::Node node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/include/delay_config.yaml");
             // auto delay = node["delay"];
             auto data_path_ = node["result"]["sim"].as<std::string>();
+            auto target_vel_x_yaml_ = node["target_vel"]["x"].as<double>();
             data_path = data_path_;
-            std::cout << data_path << std::endl;
+            target_vel_x_yaml = target_vel_x_yaml_;
 
         }
         catch(const YAML::BadFile& e) {
@@ -497,8 +500,7 @@ void CustomController::processObservation() //rui observation 만들어주기
     data_idx++;
     state_cur_(data_idx) = cos(2*M_PI*phase_); //rui 1
     data_idx++;
-
-    state_cur_(data_idx) = 1;//target_vel_x_; //rui 1
+    state_cur_(data_idx) = target_vel_x_yaml;//target_vel_x_; //rui 1
     data_idx++;
 
     state_cur_(data_idx) = target_vel_y_; //rui 1
@@ -672,7 +674,7 @@ void CustomController::computeSlow() //rui main
         }
         // //! 2000Hz
 
-        cout << "a " << action_delay << "o " << observation_delay << " " << endl;
+        // cout << "a " << action_delay << "o " << observation_delay << " " << endl;
         
         // //! 2000Hz obs delay
         // ** buffer size should be changed regarding to the policy frequency ** //
