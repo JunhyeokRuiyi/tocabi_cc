@@ -8,15 +8,48 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
 {
     ControlVal_.setZero();
 
+    if(is_on_robot_) {
+        try {
+            YAML::Node node = YAML::LoadFile("/home/dyros/catkin_ws/src/tocabi_cc/include/delay_config.yaml");
+            // auto delay = node["delay"];
+            auto data_path_ = node["result"]["real"].as<std::string>();
+            data_path = data_path_;
+
+
+        }
+        catch(const YAML::BadFile& e) {
+            std::cerr << e.msg << std::endl;
+        }
+        catch (YAML::ParserException &e){
+            std::cerr << e.msg << std::endl;
+        }
+    }
+    else{
+        try {
+            YAML::Node node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/include/delay_config.yaml");
+            // auto delay = node["delay"];
+            auto data_path_ = node["result"]["sim"].as<std::string>();
+            data_path = data_path_;
+            std::cout << data_path << std::endl;
+
+        }
+        catch(const YAML::BadFile& e) {
+            std::cerr << e.msg << std::endl;
+        }
+        catch (YAML::ParserException &e){
+            std::cerr << e.msg << std::endl;
+        }
+    }
+
     if (is_write_file_)
     {
         if (is_on_robot_)
         {
-            writeFile.open("/home/dyros/catkin_ws/src/tocabi_cc/result/iserdata/data.csv", std::ofstream::out | std::ofstream::app);
+            writeFile.open(data_path, std::ofstream::out | std::ofstream::app);
         }
         else
         {
-            writeFile.open("/home/dyros/tocabi_ws/src/tocabi_cc/result/iserdata_ppt/data_250.csv", std::ofstream::out | std::ofstream::app);
+            writeFile.open(data_path, std::ofstream::out | std::ofstream::app);
         }
         writeFile << std::fixed << std::setprecision(8);
     }
@@ -465,7 +498,7 @@ void CustomController::processObservation() //rui observation 만들어주기
     state_cur_(data_idx) = cos(2*M_PI*phase_); //rui 1
     data_idx++;
 
-    state_cur_(data_idx) = 0.2;//target_vel_x_; //rui 1
+    state_cur_(data_idx) = 1;//target_vel_x_; //rui 1
     data_idx++;
 
     state_cur_(data_idx) = target_vel_y_; //rui 1
