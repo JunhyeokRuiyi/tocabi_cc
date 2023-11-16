@@ -44,7 +44,7 @@ clc; clearvars;
 % plot(d5(2000:3000,1),d5(2000:3000,12))
 
 
-d6 = load('./iserdata/data_orig.csv');
+d6 = load('./code_test/data_2.csv');
 % observation 2000Hz with buffer + action_dt_accumulate_ EDIT
 figure();
 % observation 2000Hz with buffer
@@ -52,13 +52,21 @@ plot(d6(2000:3000,1),d6(2000:3000,6))
 hold on
 plot(d6(2000:3000,1),d6(2000:3000,12))
 
-d7 = load('./iserdata/data_3.csv');
+d7 = load('./code_test/data_3.csv');
 % observation 2000Hz with buffer + action_dt_accumulate_ EDIT
 figure();
 % observation 2000Hz with buffer
 plot(d7(2000:3000,1),d7(2000:3000,6))
 hold on
 plot(d7(2000:3000,1),d7(2000:3000,12))
+
+d8 = load('./code_test/data_4.csv');
+% observation 2000Hz with buffer + action_dt_accumulate_ EDIT
+figure();
+% observation 2000Hz with buffer
+plot(d8(2000:3000,1),d8(2000:3000,6))
+hold on
+plot(d8(2000:3000,1),d8(2000:3000,12))
 
 
 %% Value Function

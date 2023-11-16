@@ -494,7 +494,12 @@ void CustomController::processObservation() //rui observation 만들어주기
     }
 
     float squat_duration = 1.7995;
+    std::cout << "action_dt_accumulate_ : " << action_dt_accumulate_ << std::endl;
+    std::cout << "action_dt_accumulate_2 : " << action_dt_accumulate_2 << std::endl;
+
     phase_ = std::fmod((rd_cc_.control_time_us_-start_time_)/1e6 + action_dt_accumulate_, squat_duration) / squat_duration;
+
+    std::cout << "phase_ : " << phase_ << std::endl;
     
     state_cur_(data_idx) = sin(2*M_PI*phase_); //rui 1
     data_idx++;
@@ -633,7 +638,9 @@ void CustomController::computeSlow() //rui main
         // //     cout << "(rd_cc_.control_time_us_ - time_inputTorque_pre_) 2000Hz: " << (rd_cc_.control_time_us_ - time_inputTorque_pre_) << endl;
         // // }
         // //! 2000Hz
+        std::cout << "rd_cc_.control_time_us_ - time_observation_pre_ : " << rd_cc_.control_time_us_ - time_observation_pre_ << std::endl;
         processObservation(); //rui observation in 2000 44개를 받아옴
+        time_observation_pre_ = rd_cc_.control_time_us_;
 
         
         if(is_on_robot_) {
@@ -699,17 +706,28 @@ void CustomController::computeSlow() //rui main
         // //! 2000Hz obs delay
         
         // processObservation and feedforwardPolicy mean time: 15 us, max 53 us 
-        if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 > freq_scaler_) //rui 250hz 변수만들어서 바꿔주기 default 1/250.0 (control time - inference_time_pre)/ 이 250Hz, 0.004 초 지날때마다 inference
+        if ((rd_cc_.control_time_us_ - time_inference_pre_) > freq_scaler_*1.0e6) //rui 250hz 변수만들어서 바꿔주기 default 1/250.0 (control time - inference_time_pre)/ 이 250Hz, 0.004 초 지날때마다 inference
         {
             
-            // processObservation(); //rui observation in 2000 44개를 받아옴
+            processObservation(); //rui observation in 2000 44개를 받아옴
             feedforwardPolicy();
+            std::cout << "rd_cc_.control_time_us_ - time_inference_pre_ : " << rd_cc_.control_time_us_ - time_inference_pre_ << std::endl;
 
-            // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_);
+            action_dt_accumulate_2 += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_);
             time_inference_pre_ = rd_cc_.control_time_us_;
 
+            
+            std::cout << "test1 : " << test1 << std::endl;
+            std::cout << "test2 : " << test2 << std::endl;
+            test2 = 0;
+            
+
+
         }
+
+        test2++;
         action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_tester_2000HZ, 0.0, freq_tester_2000HZ); 
+        
         // time_inputTorque_pre_ = rd_cc_.control_time_us_;
         // //! 2000Hz act delay
         //** put action into buffer **//num_action*(num_state_skip*frameskip_custom*num_state_hist)

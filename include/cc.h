@@ -120,8 +120,8 @@ public:
     double target_vel_x_yaml = 0.0;
     double target_vel_y_ = 0.0;
 
-    float freq_scaler_ = 1/62.5;
-    float freq_tester_2000HZ = 1/2000.0;
+    double freq_scaler_ = 1/62.5;
+    double freq_tester_2000HZ = 1/2000.0;
     int action_delay = 1;
     int observation_delay = 1;
     int frameskip_custom = 32;//rui frameskip 250Hz -> 8, 200Hz -> 10, 150Hz -> 13, 125Hz -> 16, 100Hz -> 20, 62.5Hz -> 32, 50Hz -> 40, 40Hz -> 50 size
@@ -129,6 +129,10 @@ public:
     int action_buffer_length = 0;
     std::string data_path;
     Eigen::MatrixXd rl_action_2000_; //rui
+    bool policy_at_least_once = false;
+
+    int test1 = 0;
+    int test2 = 0;
 
 
 private:
