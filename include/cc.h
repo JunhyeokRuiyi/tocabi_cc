@@ -116,6 +116,35 @@ public:
     Eigen::MatrixXd rl_action_pre_;
     Eigen::Matrix<double, MODEL_DOF, 1> q_vel_noise_pre_;
 
+//! freq {
+    Eigen::MatrixXd rl_action_simfreq_;
+    Eigen::MatrixXd action_buffer_simfreq_;
+    Eigen::MatrixXd state_buffer_simfreq_;
+    Eigen::MatrixXd state_temp_;
+    // int frameskip;
+    int policy_step;
+
+
+//! freq }
+
+//! yaml data {
+    std::string data_path_;
+    double target_vel_x_yaml_;
+    double target_vel_y_yaml_;
+    int action_delay_;
+    int observation_delay_;
+    int frameskip_;
+    double freq_scaler_;
+    // auto data_path_;
+    // auto target_vel_x_yaml_;
+    // auto target_vel_y_yaml_;
+    // auto action_delay_;
+    // auto observation_delay_;
+    // auto frameskip_;
+    // auto freq_scaler_;
+    unsigned int action_buffer_length;
+//! yaml data }
+
 private:
     Eigen::VectorQd ControlVal_;
 };

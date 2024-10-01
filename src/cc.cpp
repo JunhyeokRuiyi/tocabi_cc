@@ -1,4 +1,5 @@
 #include "cc.h"
+#include <yaml-cpp/yaml.h>
 
 using namespace TOCABI;
 
@@ -6,22 +7,50 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
 {
     ControlVal_.setZero();
 
+//? yaml {
+    YAML::Node node;
+    if (is_on_robot_) {
+        try {node = YAML::LoadFile("/home/dyros/catkin_ws/src/tocabi_cc/delay_config.yaml");}
+        catch(const YAML::BadFile& e) {std::cerr << e.msg << std::endl;}
+        catch (YAML::ParserException &e) {std::cerr << e.msg << std::endl;}
+    }
+    else{
+        try {node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/delay_config.yaml");}
+        catch (const YAML::BadFile& e) {std::cerr << e.msg << std::endl;}
+        catch (YAML::ParserException &e) {std::cerr << e.msg << std::endl;}
+    }
+
+    data_path_ = node["result"]["sim"].as<std::string>();
+    
+    target_vel_x_yaml_ = node["target_vel"]["x"].as<double>();
+    target_vel_y_yaml_ = node["target_vel"]["y"].as<double>();
+
+    action_delay_ = node["delay"]["action"].as<int>();
+    observation_delay_ = node["delay"]["observation"].as<int>();
+
+    frameskip_ = node["frequency"]["frameskip"].as<int>();
+    freq_scaler_ = node["frequency"]["freq_scaler"].as<double>();
+
+    action_buffer_length = 0;
+
+//? yaml }
+
     if (is_write_file_)
     {
         if (is_on_robot_)
         {
-            writeFile.open("/home/dyros/catkin_ws/src/tocabi_cc/result/data.csv", std::ofstream::out | std::ofstream::app);
+            writeFile.open(data_path_, std::ofstream::out | std::ofstream::app);
         }
         else
         {
-            writeFile.open("/home/dyros/tocabi_ws/src/tocabi_cc/result/data.csv", std::ofstream::out | std::ofstream::app);
+            writeFile.open(data_path_, std::ofstream::out | std::ofstream::app);
         }
         writeFile << std::fixed << std::setprecision(8);
     }
     initVariable();
     loadNetwork();
 
-    joy_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 10, &CustomController::joyCallback, this);
+    // joy_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 10, &CustomController::joyCallback, this); //rui if joy callback exist uncomment this
 }
 
 Eigen::VectorQd CustomController::getControl()
@@ -320,6 +349,7 @@ void CustomController::initVariable()
     hidden_layer2_.resize(num_hidden, 1);
     rl_action_.resize(num_action, 1);
     rl_action_pre_.resize(num_action, 1);
+    rl_action_simfreq_.resize(num_action, 1);
     mocap_data.resize(3600,36);
 
     value_net_w0_.resize(num_hidden, num_state);
@@ -331,10 +361,14 @@ void CustomController::initVariable()
     value_hidden_layer1_.resize(num_hidden, 1);
     value_hidden_layer2_.resize(num_hidden, 1);
     
+    action_buffer_simfreq_.resize(num_action*(num_state_skip*frameskip_*num_state_hist), 1);
     state_cur_.resize(num_cur_state, 1);
     state_.resize(num_state, 1);
+    state_buffer_simfreq_.resize(num_cur_state*(num_state_skip*frameskip_*num_state_hist), 1);
     state_buffer_.resize(num_cur_state*num_state_skip*num_state_hist, 1);
+    state_temp_.resize(num_cur_state*num_state_hist, 1);
     state_mean_.resize(num_cur_state, 1);
+    
     state_var_.resize(num_cur_state, 1);
 
     q_dot_lpf_.setZero();
@@ -442,19 +476,19 @@ void CustomController::processObservation()
 
     euler_angle_ = DyrosMath::rot2Euler_tf(q.toRotationMatrix());
 
-    state_cur_(data_idx) = euler_angle_(0);
+    state_cur_(data_idx) = euler_angle_(0); //rui 1
     data_idx++;
 
-    state_cur_(data_idx) = euler_angle_(1);
+    state_cur_(data_idx) = euler_angle_(1); //rui 1
     data_idx++;
 
-    state_cur_(data_idx) = euler_angle_(2);
+    state_cur_(data_idx) = euler_angle_(2); //rui 1
     data_idx++;
 
 
     for (int i = 0; i < num_actuator_action; i++)
     {
-        state_cur_(data_idx) = q_noise_(i);
+        state_cur_(data_idx) = q_noise_(i); //rui 12
         data_idx++;
     }
 
@@ -462,7 +496,7 @@ void CustomController::processObservation()
     {
         if (is_on_robot_)
         {
-            state_cur_(data_idx) = q_vel_noise_(i);
+            state_cur_(data_idx) = q_vel_noise_(i); //rui 12
         }
         else
         {
@@ -474,20 +508,20 @@ void CustomController::processObservation()
     float squat_duration = 1.7995;
     phase_ = std::fmod((rd_cc_.control_time_us_-start_time_)/1e6 + action_dt_accumulate_, squat_duration) / squat_duration;
 
-    state_cur_(data_idx) = sin(2*M_PI*phase_);
+    state_cur_(data_idx) = sin(2*M_PI*phase_); //rui 1
     data_idx++;
-    state_cur_(data_idx) = cos(2*M_PI*phase_);
+    state_cur_(data_idx) = cos(2*M_PI*phase_); //rui 1
     data_idx++;
     
-    state_cur_(data_idx) = 0.4;//target_vel_x_;
+    state_cur_(data_idx) = target_vel_x_yaml_;//target_vel_x_; //rui 1
     data_idx++;
 
-    state_cur_(data_idx) = 0.0;//target_vel_y_;
+    state_cur_(data_idx) = target_vel_y_yaml_;//target_vel_y_; //rui 1
     data_idx++;
 
     for (int i=0; i<6; i++)
     {
-        state_cur_(data_idx) = rd_cc_.q_dot_virtual_(i);
+        state_cur_(data_idx) = rd_cc_.q_dot_virtual_(i); //rui 6 base_lin_vel base_ang_vel
         data_idx++;
     }
 
@@ -511,25 +545,27 @@ void CustomController::processObservation()
 
     for (int i = 0; i <num_actuator_action; i++) 
     {
-        state_cur_(data_idx) = DyrosMath::minmax_cut(rl_action_(i), -1.0, 1.0);
+        state_cur_(data_idx) = DyrosMath::minmax_cut(rl_action_(i), -1.0, 1.0);  //rui 12
         data_idx++;
     }
-    state_cur_(data_idx) = DyrosMath::minmax_cut(rl_action_(num_actuator_action), 0.0, 1.0);
+    state_cur_(data_idx) = DyrosMath::minmax_cut(rl_action_(num_actuator_action), 0.0, 1.0); //rui 1(phase)
     data_idx++;
     
-    state_buffer_.block(0, 0, num_cur_state*(num_state_skip*num_state_hist-1),1) = state_buffer_.block(num_cur_state, 0, num_cur_state*(num_state_skip*num_state_hist-1),1);
-    state_buffer_.block(num_cur_state*(num_state_skip*num_state_hist-1), 0, num_cur_state,1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array();
+//? orig {
+    // state_buffer_.block(0, 0, num_cur_state*(num_state_skip*num_state_hist-1),1) = state_buffer_.block(num_cur_state, 0, num_cur_state*(num_state_skip*num_state_hist-1),1);
+    // state_buffer_.block(num_cur_state*(num_state_skip*num_state_hist-1), 0, num_cur_state,1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array();
 
-    // Internal State First
-    for (int i = 0; i < num_state_hist; i++)
-    {
-        state_.block(num_cur_internal_state*i, 0, num_cur_internal_state, 1) = state_buffer_.block(num_cur_state*(num_state_skip*(i+1)-1), 0, num_cur_internal_state, 1);
-    }
-    // Action History Second
-    for (int i = 0; i < num_state_hist-1; i++)
-    {
-        state_.block(num_state_hist*num_cur_internal_state + num_action*i, 0, num_action, 1) = state_buffer_.block(num_cur_state*(num_state_skip*(i+1)) + num_cur_internal_state, 0, num_action, 1);
-    }
+    // // Internal State First
+    // for (int i = 0; i < num_state_hist; i++)
+    // {
+    //     state_.block(num_cur_internal_state*i, 0, num_cur_internal_state, 1) = state_buffer_.block(num_cur_state*(num_state_skip*(i+1)-1), 0, num_cur_internal_state, 1);
+    // }
+    // // Action History Second
+    // for (int i = 0; i < num_state_hist-1; i++)
+    // {
+    //     state_.block(num_state_hist*num_cur_internal_state + num_action*i, 0, num_action, 1) = state_buffer_.block(num_cur_state*(num_state_skip*(i+1)) + num_cur_internal_state, 0, num_action, 1);
+    // }
+//? orig }
 
 }
 
@@ -574,6 +610,7 @@ void CustomController::computeSlow()
     copyRobotData(rd_);
     if (rd_cc_.tc_.mode == 7)
     {
+//SECTION - init 
         if (rd_cc_.tc_init)
         {
             //Initialize settings for Task Control! 
@@ -589,22 +626,51 @@ void CustomController::computeSlow()
 
             processNoise();
             processObservation();
-            for (int i = 0; i < num_state_skip*num_state_hist; i++) 
+//? orig {
+            // for (int i = 0; i < num_state_skip*num_state_hist; i++) 
+            // {
+            //     state_buffer_.block(num_cur_state*i, 0, num_cur_state, 1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array();
+            //     // state_buffer_.block(num_cur_state*i, 0, num_cur_state, 1).setZero();
+            // }
+//? orig }
+//? 500Hz {
+            for (int i = 0; i < num_state_skip*frameskip_*num_state_hist; i++) //rui 0~2*8*5
             {
-                state_buffer_.block(num_cur_state*i, 0, num_cur_state, 1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array();
-                // state_buffer_.block(num_cur_state*i, 0, num_cur_state, 1).setZero();
+                state_buffer_simfreq_.block(num_cur_state*i, 0, num_cur_state, 1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array();
             }
+//? 500Hz }
         }
+//!SECTION - init
 
         processNoise();
-
-        // processObservation and feedforwardPolicy mean time: 15 us, max 53 us
-        if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 >= 1/250.0 - 1/10000.0)
+//? 500Hz {
+        processObservation();
+        // ** buffer size should be changed regarding to the policy frequency ** //
+        state_buffer_simfreq_.block(0, 0, num_cur_state*(num_state_skip*num_state_hist*frameskip_-1),1) = state_buffer_simfreq_.block(num_cur_state, 0, num_cur_state*(num_state_skip*num_state_hist*frameskip_-1),1); //rui 0~44*(2*5*8-1) = 44~44*(2*5*8), 44개만큼 끌어오고
+        state_buffer_simfreq_.block(num_cur_state*(num_state_skip*num_state_hist*frameskip_-1), 0, num_cur_state,1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array(); //rui 0~44*(2*5*8) 44개 새로 채워주기
+        // ** giving delay ** //
+        for (int i = 0; i < num_state_hist; i++){//rui num_state_hist --> 5 개의 0~44 
+            state_temp_.block(num_cur_state*(i), 0, num_cur_state, 1) = state_buffer_simfreq_.block(num_cur_state*(num_state_skip*frameskip_*(i+1)-1 - observation_delay_), 0, num_cur_state, 1); //rui 5 개의 44개 에다가 2000Hz에서 딜레이가 적용된 44크기의 state input
+        }
+        // Internal State First
+        for (int i = 0; i < num_state_hist; i++) //rui num_state_hist --> 5 num_cur_internal_state --> 31 (base_ori, q_noise, q_vel_noise, phase_sin, phase_cos, target_vel_x, target_vel_y)
         {
-            processObservation();
+            state_.block(num_cur_internal_state*i, 0, num_cur_internal_state, 1) = state_temp_.block(num_cur_state*(i), 0, num_cur_internal_state, 1); //rui (31xi) ~ (31xi)+31 = (44x(2x(i+1)-1)) ~ (44x(2x(i+1)-1))+31 
+        }
+        // Action History Second
+        for (int i = 0; i < num_state_hist-1; i++)
+        {
+            state_.block(num_state_hist*num_cur_internal_state + num_action*i, 0, num_action, 1) = state_temp_.block(num_cur_state*(i+1) + num_cur_internal_state, 0, num_action, 1); //rui (5x31+13xi) ~ (5x31+13xi)+13 = ((44x2x(i+1))+31) ~ ((44x2x(i+1))+31)+13
+        }
+//? 500Hz }
+        // processObservation and feedforwardPolicy mean time: 15 us, max 53 us
+        // if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 >= 1/250.0 - 1/10000.0) //? orig
+//SECTION - feedforwardPolicy
+        if (policy_step >= frameskip_)
+        {
+            // processObservation(); //? orig 
             feedforwardPolicy();
-            
-            action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*5/250.0, 0.0, 5/250.0);
+            // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*5/250.0, 0.0, 5/250.0); //? orig 
 
             if (value_ < 50.0)
             {
@@ -623,31 +689,47 @@ void CustomController::computeSlow()
                     writeFile << (rd_cc_.control_time_us_ - time_inference_pre_)/1e6 << "\t";
                     writeFile << phase_ << "\t";
                     writeFile << DyrosMath::minmax_cut(rl_action_(num_action-1)*1/100.0, 0.0, 1/100.0) << "\t";
-
                     writeFile << rd_cc_.LF_FT.transpose() << "\t";
                     writeFile << rd_cc_.RF_FT.transpose() << "\t";
                     writeFile << rd_cc_.LF_CF_FT.transpose() << "\t";
                     writeFile << rd_cc_.RF_CF_FT.transpose() << "\t";
-
                     writeFile << rd_cc_.torque_desired.transpose()  << "\t";
                     writeFile << q_noise_.transpose() << "\t";
                     writeFile << q_dot_lpf_.transpose() << "\t";
                     writeFile << rd_cc_.q_dot_virtual_.transpose() << "\t";
                     writeFile << rd_cc_.q_virtual_.transpose() << "\t";
-
                     writeFile << value_ << "\t" << stop_by_value_thres_ <<"\t" << reward;
-                
                     writeFile << std::endl;
-
                     time_write_pre_ = rd_cc_.control_time_us_;
             }
-            
+            std::cout << policy_step << " " << rd_cc_.control_time_us_ - time_inference_pre_ << " " << value_ << " " << stop_by_value_thres_ << std::endl;
             time_inference_pre_ = rd_cc_.control_time_us_;
+            policy_step = 0;
         }
+//!SECTION - feedforwardPolicy
+        policy_step++;
+        
+        action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_); 
+        // time_inputTorque_pre_ = rd_cc_.control_time_us_;
+
+//? 500Hz act delay
+        //** put action into buffer **//num_action*(num_state_skip*frameskip_custom*num_state_hist)
+        action_buffer_simfreq_.block(0, 0, num_action*(num_state_skip*frameskip_*num_state_hist-1),1) = action_buffer_simfreq_.block(num_action, 0, num_action*(num_state_skip*frameskip_*num_state_hist-1),1); //rui 0~13x(2*5*8-1) = 13~13x(2*5*8), 13개만큼 끌어오고
+        action_buffer_simfreq_.block(num_action*(num_state_skip*frameskip_*num_state_hist-1), 0, num_action,1) = rl_action_; //rui 새로운 action로 채워주기
+        //** apply action delay **//
+        if( action_buffer_length  <= action_delay_){
+            rl_action_simfreq_ = action_buffer_simfreq_.block(num_action*(num_state_skip*frameskip_*num_state_hist-1 - action_buffer_length), 0, num_action, 1);
+            action_buffer_length++;
+        }
+        else{
+            rl_action_simfreq_ = action_buffer_simfreq_.block(num_action*(num_state_skip*frameskip_*num_state_hist-1 - action_delay_), 0, num_action, 1);
+        }
+//? 500Hz act delay
+
 
         for (int i = 0; i < num_actuator_action; i++)
         {
-            torque_rl_(i) = DyrosMath::minmax_cut(rl_action_(i)*torque_bound_(i), -torque_bound_(i), torque_bound_(i));
+            torque_rl_(i) = DyrosMath::minmax_cut(rl_action_simfreq_(i)*torque_bound_(i), -torque_bound_(i), torque_bound_(i));
         }
         for (int i = num_actuator_action; i < MODEL_DOF; i++)
         {
