@@ -1,0 +1,19 @@
+
+
+result:
+
+  sim: "/home/dyros/tocabi_ws/src/tocabi_cc/data"
+  real: "/home/dyros/catkin_ws/data_"
+
+target_vel:
+
+  x: 0.4
+  y: 0.0
+
+delay:
+  action: 1
+  observation: 1
+
+frequency:
+  frameskip: 16
+  freq_scaler: 0.008 # 0.004 for 250Hz, 0.002 for 500Hz
