@@ -702,7 +702,7 @@ void CustomController::computeSlow()
                     writeFile << std::endl;
                     time_write_pre_ = rd_cc_.control_time_us_;
             }
-            std::cout << policy_step << " " << rd_cc_.control_time_us_ - time_inference_pre_ << " " << value_ << " " << stop_by_value_thres_ << std::endl;
+            // std::cout << policy_step << " " << rd_cc_.control_time_us_ - time_inference_pre_ << " " << value_ << " " << stop_by_value_thres_ << std::endl;
             time_inference_pre_ = rd_cc_.control_time_us_;
             policy_step = 0;
         }
