@@ -5,6 +5,7 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
+#include <tocabi_msgs/WalkingCommand.h>
 
 class CustomController
 {
@@ -26,19 +27,27 @@ public:
     void loadNetwork();
     void processNoise();
     void processObservation();
+    void processDiscriminator();
     void feedforwardPolicy();
     void initVariable();
     double computeReward();
     Eigen::Vector3d mat2euler(Eigen::Matrix3d mat);
+    void quatToTanNorm(const Eigen::Quaterniond& quaternion, Eigen::Vector3d& tangent, Eigen::Vector3d& normal);
+    void checkTouchDown();
+    Eigen::Vector3d quatRotateInverse(const Eigen::Quaterniond& q, const Eigen::Vector3d& v);
 
-    static const int num_action = 13;
+    static const int num_action = 12;
     static const int num_actuator_action = 12;
-    static const int num_cur_state = 50;
-    static const int num_cur_internal_state = 37;
-    static const int num_state_skip = 4;
+    // static const int num_cur_state = 49; // 37 + 12
+    static const int num_cur_state = 48; // 36 + 12
+    // static const int num_cur_internal_state = 37;
+    static const int num_cur_internal_state = 36;
+    static const int num_state_skip = 2;
     static const int num_state_hist = 10;
     static const int num_state = num_cur_internal_state*num_state_hist+num_action*(num_state_hist-1);
-    static const int num_hidden = 256;
+    // static const int num_state = 59;
+    static const int num_hidden1 = 512;
+    static const int num_hidden2 = 512;
 
     Eigen::MatrixXd policy_net_w0_;
     Eigen::MatrixXd policy_net_b0_;
@@ -70,6 +79,29 @@ public:
     Eigen::MatrixXd state_mean_;
     Eigen::MatrixXd state_var_;
 
+    static const int num_disc_state = 34 * 2;
+    static const int num_disc_cur_state = 34;
+    static const int disc_output = 1;
+    static const int num_disc_hidden1 = 256;
+    static const int num_disc_hidden2 = 256;
+
+    Eigen::MatrixXd disc_net_w0_;
+    Eigen::MatrixXd disc_net_b0_;
+    Eigen::MatrixXd disc_net_w2_;
+    Eigen::MatrixXd disc_net_b2_;
+    Eigen::MatrixXd disc_net_w_;
+    Eigen::MatrixXd disc_net_b_;
+
+    Eigen::MatrixXd disc_hidden_layer1_;
+    Eigen::MatrixXd disc_hidden_layer2_;
+    double disc_value_;
+
+    Eigen::MatrixXd disc_state_;
+    Eigen::MatrixXd disc_state_buffer_;
+    Eigen::MatrixXd disc_state_cur_;
+    Eigen::MatrixXd disc_state_mean_;
+    Eigen::MatrixXd disc_state_var_;
+
     std::ofstream writeFile;
 
     float phase_ = 0.0;
@@ -90,7 +122,9 @@ public:
 
     Eigen::Matrix<double, MODEL_DOF, MODEL_DOF> kp_;
     Eigen::Matrix<double, MODEL_DOF, MODEL_DOF> kv_;
+    Eigen::VectorQd Gravity_MJ_;
 
+    Eigen::Vector6d LF_CF_FT_pre, RF_CF_FT_pre = Eigen::Vector6d::Zero();
     float start_time_;
     float time_inference_pre_ = 0.0;
     float time_write_pre_ = 0.0;
@@ -100,15 +134,26 @@ public:
     double action_dt_accumulate_ = 0.0;
 
     Eigen::Vector3d euler_angle_;
+    Eigen::Vector3d tan_vec, nor_vec;
 
+    string weight_dir_ = "";
     // Joystick
     ros::NodeHandle nh_;
 
-    void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
+    // void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
+    void joyCallback(const tocabi_msgs::WalkingCommand::ConstPtr& joy);
+    void xBoxJoyCallback(const sensor_msgs::Joy::ConstPtr& joy);
     ros::Subscriber joy_sub_;
+    ros::Subscriber xbox_joy_sub_;
+
+    Eigen::Vector3d local_lin_vel_;
 
     double target_vel_x_ = 0.0;
     double target_vel_y_ = 0.0;
+    double target_vel_yaw_ = 0.0;
+
+    float desired_vel_x = 0.0;
+    float desired_vel_yaw = 0.0;
     
     Eigen::MatrixXd mocap_data;
     Eigen::Vector6d LF_FT_pre_;

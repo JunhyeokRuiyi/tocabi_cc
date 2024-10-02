@@ -1,2 +1,2 @@
-result/data*.csv
+result/*
 .vscode/
