@@ -2,11 +2,11 @@
 data_path_sim: "/home/dyros/tocabi_ws/src/tocabi_cc/result/data"
 data_path_real: "/home/dyros/catkin_ws/tocabi_cc/result/data"
 
-target_vel_x: 0.4
+target_vel_x: 0.5
 target_vel_y: 0.0
 
 delay_action: 1
 delay_observation: 1
 
-frameskip: 8 #no need to change
-freq_scaler: 0.002 # 0.004 for 250Hz, 0.002 for 500Hz
+frameskip: 4 # 4 500Hz frameskip * freq = 2000
+freq_scaler: 0.002 # 0.004 for 250Hz, 0.002 for 500Hz 1/500Hz

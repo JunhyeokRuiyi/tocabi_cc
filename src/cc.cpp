@@ -334,7 +334,7 @@ void CustomController::processObservation()
 
     //** 6) commands: x, y, yaw                      (3)     14:17
     if (rd_cc_.control_time_us_ < start_time_ + 10e6) {
-        desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_, start_time_ + 5e6, 0.0, target_vel_x_yaml_, 0.0, 0.0);
+        desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_, start_time_ + 3e6, 0.0, target_vel_x_yaml_, 0.0, 0.0);
         // desired_vel_yaw = 0.0;
     }
     else if (rd_cc_.control_time_us_ < start_time_ + 20e6) {
@@ -343,7 +343,7 @@ void CustomController::processObservation()
         // desired_vel_yaw = 0.0;
     }
     else if (rd_cc_.control_time_us_ < start_time_ + 30e6) {
-        desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 24e6, start_time_ + 29e6, target_vel_x_yaml_, 0.0, 0.0, 0.0);
+        desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 26e6, start_time_ + 29e6, target_vel_x_yaml_, 0.0, 0.0, 0.0);
         // desired_vel_yaw = 0.0;
     }
     // else if (rd_cc_.control_time_us_ < start_time_ + 40e6) {
@@ -659,14 +659,14 @@ void CustomController::computeSlow()
         processNoise();
 
         // processObservation and feedforwardPolicy mean time: 15 us, max 53 us
-        if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 >= 1/250.0 - 1/10000.0) 
+        // if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 >= 1/250.0 - 1/10000.0) 
 //SECTION - feedforwardPolicy
-        // if (policy_step >= frameskip_)
+        if (policy_step >= frameskip_)
         {
             processObservation(); //? orig 
             processDiscriminator();
             feedforwardPolicy();
-            // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*5/250.0, 0.0, 5/250.0); //? orig 
+            action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*5*freq_scaler_, 0.0, 5*freq_scaler_); //? orig 
 
             if (value_ < -10.0)
             {
@@ -717,7 +717,7 @@ void CustomController::computeSlow()
 //!SECTION - feedforwardPolicy
         policy_step++;
         
-        action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_); 
+        // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_); 
         // time_inputTorque_pre_ = rd_cc_.control_time_us_;
 
 //? 500Hz act delay
