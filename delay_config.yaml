@@ -7,7 +7,7 @@ result:
 
 target_vel:
 
-  x: 0.4
+  x: 0.8
   y: 0.0
 
 delay:
@@ -16,4 +16,4 @@ delay:
 
 frequency:
   frameskip: 8
-  freq_scaler: 0.004 # 0.004 for 250Hz, 0.002 for 500Hz
+  freq_scaler: 0.016 # 0.004 for 250Hz, 0.002 for 500Hz
