@@ -1,5 +1,4 @@
 #include "cc.h"
-#include <yaml-cpp/yaml.h>
 
 using namespace TOCABI;
 
@@ -8,30 +7,27 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
     ControlVal_.setZero();
     
 
-//? yaml {
-    YAML::Node node;
+//? yaml getparam{ 
     if (is_on_robot_) {
-        try {node = YAML::LoadFile("/home/dyros/catkin_ws/src/tocabi_cc/delay_config.yaml");}
-        catch(const YAML::BadFile& e) {std::cerr << e.msg << std::endl;}
-        catch (YAML::ParserException &e) {std::cerr << e.msg << std::endl;}
+        ros::param::get("/tocabi_controller/data_path_real", data_path_);
     }
     else{
-        try {node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/delay_config.yaml");}
-        catch (const YAML::BadFile& e) {std::cerr << e.msg << std::endl;}
-        catch (YAML::ParserException &e) {std::cerr << e.msg << std::endl;}
+        ros::param::get("/tocabi_controller/data_path_sim", data_path_);
     }
-
-    data_path_ = node["result"]["sim"].as<std::string>();
+    std::cout << "data_path : " << data_path_ << std::endl;
+    ros::param::get("/tocabi_controller/target_vel_x", target_vel_x_yaml_); 
+    std::cout << "target_vel_x : " << target_vel_x_yaml_ << std::endl;
+    ros::param::get("/tocabi_controller/target_vel_y", target_vel_y_yaml_); 
+    std::cout << "target_vel_y : " << target_vel_y_yaml_ << std::endl;
+    ros::param::get("/tocabi_controller/delay_action", action_delay_); 
+    std::cout << "action_delay : " << action_delay_ << std::endl;
+    ros::param::get("/tocabi_controller/delay_observation", observation_delay_); 
+    std::cout << "obs_delay : " << observation_delay_ << std::endl;
+    ros::param::get("/tocabi_controller/frameskip", frameskip_); 
+    std::cout << "frameskip : " << frameskip_ << std::endl;
+    ros::param::get("/tocabi_controller/freq_scaler", freq_scaler_); 
+    std::cout << "freq_scaler : " << freq_scaler_ << std::endl;
     
-    target_vel_x_yaml_ = node["target_vel"]["x"].as<double>();
-    target_vel_y_yaml_ = node["target_vel"]["y"].as<double>();
-
-    action_delay_ = node["delay"]["action"].as<int>();
-    observation_delay_ = node["delay"]["observation"].as<int>();
-
-    frameskip_ = node["frequency"]["frameskip"].as<int>();
-    freq_scaler_ = node["frequency"]["freq_scaler"].as<double>();
-
     action_buffer_length = 0;
 
 //? yaml }
@@ -337,38 +333,44 @@ void CustomController::processObservation()
     }
 
     //** 6) commands: x, y, yaw                      (3)     14:17
-    // if (rd_cc_.control_time_us_ < start_time_ + 10e6) {
-    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_, start_time_ + 5e6, 0.0, 1.0, 0.0, 0.0);
-    //     desired_vel_yaw = 0.0;
-    // }
-    // else if (rd_cc_.control_time_us_ < start_time_ + 15e6) {
-    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 10e6, start_time_ + 14e6, 1.0, 0.0, 0.0, 0.0);
-    //     desired_vel_yaw = 0.0;
-    // }
-    // else if (rd_cc_.control_time_us_ < start_time_ + 25e6) {
-    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 15e6, start_time_ + 20e6, 0.0, -0.5, 0.0, 0.0);
-    //     desired_vel_yaw = 0.0;
-    // }
+    if (rd_cc_.control_time_us_ < start_time_ + 10e6) {
+        desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_, start_time_ + 5e6, 0.0, target_vel_x_yaml_, 0.0, 0.0);
+        // desired_vel_yaw = 0.0;
+    }
+    else if (rd_cc_.control_time_us_ < start_time_ + 20e6) {
+        // desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 14e6, start_time_ + 19e6, 0.3, 0.0, 0.0, 0.0);
+        desired_vel_x = target_vel_x_yaml_;
+        // desired_vel_yaw = 0.0;
+    }
+    else if (rd_cc_.control_time_us_ < start_time_ + 30e6) {
+        desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 24e6, start_time_ + 29e6, target_vel_x_yaml_, 0.0, 0.0, 0.0);
+        // desired_vel_yaw = 0.0;
+    }
     // else if (rd_cc_.control_time_us_ < start_time_ + 40e6) {
-    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 25e6, start_time_ + 26e6, -0.5, 0.0, 0.0, 0.0);
-    //     desired_vel_yaw = -0.4;
+    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 30e6, start_time_ + 35e6, 0.0, 0.5, 0.0, 0.0);
+    //     // desired_vel_yaw = 0.0;
     // }
     // else if (rd_cc_.control_time_us_ < start_time_ + 50e6) {
-    //     desired_vel_x = 0.0;
-    //     desired_vel_yaw = 0.4;
+    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 44e6, start_time_ + 49e6, 0.5, 0.0, 0.0, 0.0);
+    //     // desired_vel_yaw = -0.4;
     // }
     // else if (rd_cc_.control_time_us_ < start_time_ + 60e6) {
-    //     desired_vel_x = 0.5;
-    //     desired_vel_yaw = -0.4;
+    //     // desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 15e6, start_time_ + 20e6, 0.0, 0.5, 0.0, 0.0);
+    //     desired_vel_x = 0.0;
+    //     // desired_vel_yaw = 0.4;
     // }
     // else if (rd_cc_.control_time_us_ < start_time_ + 70e6) {
-    //     desired_vel_x = 0.5;
-    //     desired_vel_yaw = 0.4;
+    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 60e6, start_time_ + 65e6, 0.0, 0.7, 0.0, 0.0);
+    //     // desired_vel_yaw = -0.4;
     // }
-    // else {
-    //     desired_vel_x = 0.0;
-    //     desired_vel_yaw = 0.0;
+    // else if (rd_cc_.control_time_us_ < start_time_ + 80e6) {
+    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 74e6, start_time_ + 79e6, 0.7, 0.0, 0.0, 0.0);
+    //     // desired_vel_yaw = 0.4;
     // }
+    else {
+        desired_vel_x = 0.0;
+        // desired_vel_yaw = 0.0;
+    }
 
     // if (rd_cc_.control_time_us_ < start_time_ + 20e6) {
     //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_, start_time_ + 20e6, 0.0, 0.8, 0.8/20e6, 0.8/20e6);
@@ -387,11 +389,12 @@ void CustomController::processObservation()
     // state_cur_(data_idx) = desired_vel_yaw;
     // data_idx++;
 
-    state_cur_(data_idx) = target_vel_x_yaml_;
+    // state_cur_(data_idx) = target_vel_x_yaml_;//?
+
     // desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_, start_time_ + 20e6, 0.0, 1.5, 1.5/20e6, 1.5/20e6);
     // desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_, start_time_ + 20e6, 0.0, 1.4, 1.4/20e6, 1.4/20e6);
     // desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_, start_time_ + 30e6, 0.0, 1.5, 1.5/30e6, 1.5/30e6);
-    // state_cur_(data_idx) = desired_vel_x;
+    state_cur_(data_idx) = desired_vel_x;
     data_idx++;
     // state_cur_(data_idx) = target_vel_y_;
     state_cur_(data_idx) = 0.0;
@@ -676,7 +679,7 @@ void CustomController::computeSlow()
                     std::cout << "Stop by Value Function" << std::endl;
                 }
             }
-            cout << "Value: " << value_ << " Disc: " << disc_value_ << endl;
+            cout << "Value: " << value_ << " Disc: " << disc_value_ << " target x vel : " <<  desired_vel_x << " time : "<< rd_cc_.control_time_us_ << endl;
             // checkTouchDown();
 
             if (is_write_file_)
