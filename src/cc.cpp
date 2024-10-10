@@ -1,5 +1,4 @@
 #include "cc.h"
-#include <yaml-cpp/yaml.h>
 
 using namespace TOCABI;
 
@@ -8,28 +7,26 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
     ControlVal_.setZero();
 
 //? yaml {
-    YAML::Node node;
     if (is_on_robot_) {
-        try {node = YAML::LoadFile("/home/dyros/catkin_ws/src/tocabi_cc/delay_config.yaml");}
-        catch(const YAML::BadFile& e) {std::cerr << e.msg << std::endl;}
-        catch (YAML::ParserException &e) {std::cerr << e.msg << std::endl;}
+        ros::param::get("/tocabi_controller/data_path_real", data_path_);
     }
     else{
-        try {node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/delay_config.yaml");}
-        catch (const YAML::BadFile& e) {std::cerr << e.msg << std::endl;}
-        catch (YAML::ParserException &e) {std::cerr << e.msg << std::endl;}
+        ros::param::get("/tocabi_controller/data_path_sim", data_path_);
     }
 
-    data_path_ = node["result"]["sim"].as<std::string>();
-    
-    target_vel_x_yaml_ = node["target_vel"]["x"].as<double>();
-    target_vel_y_yaml_ = node["target_vel"]["y"].as<double>();
-
-    action_delay_ = node["delay"]["action"].as<int>();
-    observation_delay_ = node["delay"]["observation"].as<int>();
-
-    frameskip_ = node["frequency"]["frameskip"].as<int>();
-    freq_scaler_ = node["frequency"]["freq_scaler"].as<double>();
+    std::cout << "data_path : " << data_path_ << std::endl;
+    ros::param::get("/tocabi_controller/target_vel_x", target_vel_x_yaml_); 
+    std::cout << "target_vel_x : " << target_vel_x_yaml_ << std::endl;
+    ros::param::get("/tocabi_controller/target_vel_y", target_vel_y_yaml_); 
+    std::cout << "target_vel_y : " << target_vel_y_yaml_ << std::endl;
+    ros::param::get("/tocabi_controller/delay_action", action_delay_); 
+    std::cout << "action_delay : " << action_delay_ << std::endl;
+    ros::param::get("/tocabi_controller/delay_observation", observation_delay_); 
+    std::cout << "obs_delay : " << observation_delay_ << std::endl;
+    ros::param::get("/tocabi_controller/frameskip", frameskip_); 
+    std::cout << "frameskip : " << frameskip_ << std::endl;
+    ros::param::get("/tocabi_controller/freq_scaler", freq_scaler_); 
+    std::cout << "freq_scaler : " << freq_scaler_ << std::endl;
 
     action_buffer_length = 0;
 
@@ -64,277 +61,62 @@ void CustomController::loadNetwork()
     rl_action_.setZero();
 
 
-    string cur_path = "/home/dyros/tocabi_ws/src/tocabi_cc/";
+    string cur_path = "/home/dyros/tocabi_ws/src/tocabi_cc/weight/";
 
     if (is_on_robot_)
     {
-        cur_path = "/home/dyros/catkin_ws/src/tocabi_cc/";
+        cur_path = "/home/dyros/catkin_ws/src/tocabi_cc/weight/";
     }
     std::ifstream file[15];
-    file[0].open(cur_path+"weight/a2c_network_actor_mlp_0_weight.txt", std::ios::in);
-    file[1].open(cur_path+"weight/a2c_network_actor_mlp_0_bias.txt", std::ios::in);
-    file[2].open(cur_path+"weight/a2c_network_actor_mlp_2_weight.txt", std::ios::in);
-    file[3].open(cur_path+"weight/a2c_network_actor_mlp_2_bias.txt", std::ios::in);
-    file[4].open(cur_path+"weight/a2c_network_mu_weight.txt", std::ios::in);
-    file[5].open(cur_path+"weight/a2c_network_mu_bias.txt", std::ios::in);
-    file[6].open(cur_path+"weight/obs_mean_fixed.txt", std::ios::in);
-    file[7].open(cur_path+"weight/obs_variance_fixed.txt", std::ios::in);
-    file[8].open(cur_path+"weight/a2c_network_critic_mlp_0_weight.txt", std::ios::in);
-    file[9].open(cur_path+"weight/a2c_network_critic_mlp_0_bias.txt", std::ios::in);
-    file[10].open(cur_path+"weight/a2c_network_critic_mlp_2_weight.txt", std::ios::in);
-    file[11].open(cur_path+"weight/a2c_network_critic_mlp_2_bias.txt", std::ios::in);
-    file[12].open(cur_path+"weight/a2c_network_value_weight.txt", std::ios::in);
-    file[13].open(cur_path+"weight/a2c_network_value_bias.txt", std::ios::in);
-    file[14].open(cur_path+"weight/processed_data_tocabi_walk.txt", std::ios::in);
+    file[0].open(cur_path+"a2c_network_actor_mlp_0_weight.txt", std::ios::in);
+    file[1].open(cur_path+"a2c_network_actor_mlp_0_bias.txt", std::ios::in);
+    file[2].open(cur_path+"a2c_network_actor_mlp_2_weight.txt", std::ios::in);
+    file[3].open(cur_path+"a2c_network_actor_mlp_2_bias.txt", std::ios::in);
+    file[4].open(cur_path+"a2c_network_mu_weight.txt", std::ios::in);
+    file[5].open(cur_path+"a2c_network_mu_bias.txt", std::ios::in);
+    file[6].open(cur_path+"obs_mean_fixed.txt", std::ios::in);
+    file[7].open(cur_path+"obs_variance_fixed.txt", std::ios::in);
+    file[8].open(cur_path+"a2c_network_critic_mlp_0_weight.txt", std::ios::in);
+    file[9].open(cur_path+"a2c_network_critic_mlp_0_bias.txt", std::ios::in);
+    file[10].open(cur_path+"a2c_network_critic_mlp_2_weight.txt", std::ios::in);
+    file[11].open(cur_path+"a2c_network_critic_mlp_2_bias.txt", std::ios::in);
+    file[12].open(cur_path+"a2c_network_value_weight.txt", std::ios::in);
+    file[13].open(cur_path+"a2c_network_value_bias.txt", std::ios::in);
+    file[14].open(cur_path+"processed_data_tocabi_walk.txt", std::ios::in);
 
-
-    if(!file[0].is_open())
-    {
-        std::cout<<"Can not find the weight file"<<std::endl;
+    if (!file[0].is_open()) {
+        std::cerr << "Error: Cannot open weight file a2c_network_actor_mlp_0_weight.txt" << std::endl;
+        return;
     }
 
-    float temp;
-    int row = 0;
-    int col = 0;
+    auto loadMatrix = [&](std::ifstream &file, Eigen::MatrixXd &matrix) {
+        int row = 0, col = 0;
+        float temp;
+        while (file >> temp && row < matrix.rows()) {
+            matrix(row, col++) = temp;
+            if (col == matrix.cols()) {
+                col = 0;
+                row++;
+            }
+        }
+    };
 
-    while(!file[0].eof() && row != policy_net_w0_.rows())
-    {
-        file[0] >> temp;
-        if(temp != '\n')
-        {
-            policy_net_w0_(row, col) = temp;
-            col ++;
-            if (col == policy_net_w0_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[1].eof() && row != policy_net_b0_.rows())
-    {
-        file[1] >> temp;
-        if(temp != '\n')
-        {
-            policy_net_b0_(row, col) = temp;
-            col ++;
-            if (col == policy_net_b0_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[2].eof() && row != policy_net_w2_.rows())
-    {
-        file[2] >> temp;
-        if(temp != '\n')
-        {
-            policy_net_w2_(row, col) = temp;
-            col ++;
-            if (col == policy_net_w2_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[3].eof() && row != policy_net_b2_.rows())
-    {
-        file[3] >> temp;
-        if(temp != '\n')
-        {
-            policy_net_b2_(row, col) = temp;
-            col ++;
-            if (col == policy_net_b2_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[4].eof() && row != action_net_w_.rows())
-    {
-        file[4] >> temp;
-        if(temp != '\n')
-        {
-            action_net_w_(row, col) = temp;
-            col ++;
-            if (col == action_net_w_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[5].eof() && row != action_net_b_.rows())
-    {
-        file[5] >> temp;
-        if(temp != '\n')
-        {
-            action_net_b_(row, col) = temp;
-            col ++;
-            if (col == action_net_b_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[6].eof() && row != state_mean_.rows())
-    {
-        file[6] >> temp;
-        if(temp != '\n')
-        {
-            state_mean_(row, col) = temp;
-            col ++;
-            if (col == state_mean_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[7].eof() && row != state_var_.rows())
-    {
-        file[7] >> temp;
-        if(temp != '\n')
-        {
-            state_var_(row, col) = temp;
-            col ++;
-            if (col == state_var_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[8].eof() && row != value_net_w0_.rows())
-    {
-        file[8] >> temp;
-        if(temp != '\n')
-        {
-            value_net_w0_(row, col) = temp;
-            col ++;
-            if (col == value_net_w0_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[9].eof() && row != value_net_b0_.rows())
-    {
-        file[9] >> temp;
-        if(temp != '\n')
-        {
-            value_net_b0_(row, col) = temp;
-            col ++;
-            if (col == value_net_b0_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[10].eof() && row != value_net_w2_.rows())
-    {
-        file[10] >> temp;
-        if(temp != '\n')
-        {
-            value_net_w2_(row, col) = temp;
-            col ++;
-            if (col == value_net_w2_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[11].eof() && row != value_net_b2_.rows())
-    {
-        file[11] >> temp;
-        if(temp != '\n')
-        {
-            value_net_b2_(row, col) = temp;
-            col ++;
-            if (col == value_net_b2_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[12].eof() && row != value_net_w_.rows())
-    {
-        file[12] >> temp;
-        if(temp != '\n')
-        {
-            value_net_w_(row, col) = temp;
-            col ++;
-            if (col == value_net_w_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[13].eof() && row != value_net_b_.rows())
-    {
-        file[13] >> temp;
-        if(temp != '\n')
-        {
-            value_net_b_(row, col) = temp;
-            col ++;
-            if (col == value_net_b_.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
-    row = 0;
-    col = 0;
-    while(!file[14].eof() && row != mocap_data.rows())
-    {
-        file[14] >> temp;
-        if(temp != '\n')
-        {
-            mocap_data(row, col) = temp;
-            col ++;
-            if (col == mocap_data.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
+    loadMatrix(file[0], policy_net_w0_);
+    loadMatrix(file[1], policy_net_b0_);
+    loadMatrix(file[2], policy_net_w2_);
+    loadMatrix(file[3], policy_net_b2_);
+    loadMatrix(file[4], action_net_w_);
+    loadMatrix(file[5], action_net_b_);
+    loadMatrix(file[6], state_mean_);
+    loadMatrix(file[7], state_var_);
+    loadMatrix(file[8], value_net_w0_);
+    loadMatrix(file[9], value_net_b0_);
+    loadMatrix(file[10], value_net_w2_);
+    loadMatrix(file[11], value_net_b2_);
+    loadMatrix(file[12], value_net_w_);
+    loadMatrix(file[13], value_net_b_);  
+    loadMatrix(file[14], mocap_data);
+
 }
 
 void CustomController::initVariable()
@@ -349,7 +131,6 @@ void CustomController::initVariable()
     hidden_layer2_.resize(num_hidden, 1);
     rl_action_.resize(num_action, 1);
     rl_action_pre_.resize(num_action, 1);
-    rl_action_simfreq_.resize(num_action, 1);
     mocap_data.resize(3600,36);
 
     value_net_w0_.resize(num_hidden, num_state);
@@ -361,17 +142,18 @@ void CustomController::initVariable()
     value_hidden_layer1_.resize(num_hidden, 1);
     value_hidden_layer2_.resize(num_hidden, 1);
     
-    action_buffer_simfreq_.resize(num_action*(num_state_skip*frameskip_*num_state_hist), 1);
     state_cur_.resize(num_cur_state, 1);
     state_.resize(num_state, 1);
-    state_buffer_simfreq_.resize(num_cur_state*(num_state_skip*frameskip_*num_state_hist), 1);
     state_buffer_.resize(num_cur_state*num_state_skip*num_state_hist, 1);
-    state_temp_.resize(num_cur_state*num_state_hist, 1);
     state_mean_.resize(num_cur_state, 1);
-    
     state_var_.resize(num_cur_state, 1);
 
     q_dot_lpf_.setZero();
+
+    rl_action_simfreq_.resize(num_action, 1);
+    state_temp_.resize(num_cur_state*num_state_hist, 1);
+    state_buffer_simfreq_.resize(num_cur_state*(num_state_skip*num_state_hist*frameskip_), 1);
+    action_buffer_simfreq_.resize(num_action*(num_state_skip*frameskip_*num_state_hist), 1);
 
     torque_bound_ << 333, 232, 263, 289, 222, 166,
                     333, 232, 263, 289, 222, 166,
@@ -466,8 +248,21 @@ void CustomController::processNoise()
 
 void CustomController::processObservation()
 {
+    /* 
+    ;obs
+    ;1) root_rot: root rotation                  (3)     0:2
+    ;2) dof_pos: dof position                    (12)    3:14
+    ;3) dof_vel: dof velocity                    (12)    15:26 
+    ;4) phase: sin cos                           (2)     27:29
+    ;5) commands: x, y                           (2)     30:32
+    ;6) root_vel: root linear velocity           (3)     31:33
+    ;7) root_ang_vel: root angular velocity      (3)     34:36
+    ;8) action: actuator + phase                 (13)        
+    */
+
     int data_idx = 0;
 
+    //;1) root_rot: root rotation                  (3)     0:2
     Eigen::Quaterniond q;
     q.x() = rd_cc_.q_virtual_(3);
     q.y() = rd_cc_.q_virtual_(4);
@@ -485,13 +280,14 @@ void CustomController::processObservation()
     state_cur_(data_idx) = euler_angle_(2); //rui 1
     data_idx++;
 
-
+    //;2) dof_pos: dof position                    (12)    3:14
     for (int i = 0; i < num_actuator_action; i++)
     {
         state_cur_(data_idx) = q_noise_(i); //rui 12
         data_idx++;
     }
 
+    //;3) dof_vel: dof velocity                    (12)    15:26 
     for (int i = 0; i < num_actuator_action; i++)
     {
         if (is_on_robot_)
@@ -507,17 +303,42 @@ void CustomController::processObservation()
 
     float squat_duration = 1.7995;
     phase_ = std::fmod((rd_cc_.control_time_us_-start_time_)/1e6 + action_dt_accumulate_, squat_duration) / squat_duration;
-
+    //;4) phase: sin cos                           (2)     27:29
     state_cur_(data_idx) = sin(2*M_PI*phase_); //rui 1
     data_idx++;
     state_cur_(data_idx) = cos(2*M_PI*phase_); //rui 1
     data_idx++;
     
-    state_cur_(data_idx) = target_vel_x_yaml_;//target_vel_x_; //rui 1
+    //;5) commands: x, y                           (2)     30:32
+    // if (rd_cc_.control_time_us_ < start_time_ + 10e6) {
+    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_, start_time_ + 3e6, 0.0, target_vel_x_yaml_, 0.0, 0.0);
+    //     // desired_vel_yaw = 0.0;
+    // }
+    // else if (rd_cc_.control_time_us_ < start_time_ + 20e6) {
+    //     // desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 14e6, start_time_ + 19e6, 0.3, 0.0, 0.0, 0.0);
+    //     desired_vel_x = target_vel_x_yaml_;
+    //     // desired_vel_yaw = 0.0;
+    // }
+    // else if (rd_cc_.control_time_us_ < start_time_ + 30e6) {
+    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 26e6, start_time_ + 29e6, target_vel_x_yaml_, 0.0, 0.0, 0.0);
+    //     // desired_vel_yaw = 0.0;
+    // }
+    // else {
+    //     desired_vel_x = 0.0;
+    //     // desired_vel_yaw = 0.0;
+    // }
+    
+    
+    // state_cur_(data_idx) = desired_vel_x;//target_vel_x_; //rui 1
+    state_cur_(data_idx) = 0.4;//target_vel_x_; //rui 1
     data_idx++;
 
-    state_cur_(data_idx) = target_vel_y_yaml_;//target_vel_y_; //rui 1
+    // state_cur_(data_idx) = target_vel_y_yaml_;//target_vel_y_; //rui 1
+    state_cur_(data_idx) = 0.0;//target_vel_y_; //rui 1
     data_idx++;
+
+    //;6) root_vel: root linear velocity           (3)     31:33
+    //;7) root_ang_vel: root angular velocity      (3)     34:36
 
     for (int i=0; i<6; i++)
     {
@@ -543,6 +364,7 @@ void CustomController::processObservation()
     // state_cur_(data_idx) = rd_cc_.RF_FT(4);
     // data_idx++;
 
+    //;8) action: actuator + phase                 (13)        
     for (int i = 0; i <num_actuator_action; i++) 
     {
         state_cur_(data_idx) = DyrosMath::minmax_cut(rl_action_(i), -1.0, 1.0);  //rui 12
@@ -551,7 +373,7 @@ void CustomController::processObservation()
     state_cur_(data_idx) = DyrosMath::minmax_cut(rl_action_(num_actuator_action), 0.0, 1.0); //rui 1(phase)
     data_idx++;
     
-//? orig {
+//orig
     // state_buffer_.block(0, 0, num_cur_state*(num_state_skip*num_state_hist-1),1) = state_buffer_.block(num_cur_state, 0, num_cur_state*(num_state_skip*num_state_hist-1),1);
     // state_buffer_.block(num_cur_state*(num_state_skip*num_state_hist-1), 0, num_cur_state,1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array();
 
@@ -565,7 +387,29 @@ void CustomController::processObservation()
     // {
     //     state_.block(num_state_hist*num_cur_internal_state + num_action*i, 0, num_action, 1) = state_buffer_.block(num_cur_state*(num_state_skip*(i+1)) + num_cur_internal_state, 0, num_action, 1);
     // }
-//? orig }
+//orig
+//SECTION - //? 500Hz
+    // ** buffer size should be changed regarding to the policy frequency ** //
+    
+    state_buffer_simfreq_.block(0, 0, num_cur_state*(num_state_skip*num_state_hist*frameskip_-1), 1) = state_buffer_simfreq_.block(num_cur_state, 0, num_cur_state*(num_state_skip*num_state_hist*frameskip_-1),1); //rui 0~50*(2*10*frameskip-1) = 50~50*(2*10*frameskip), 50개만큼 끌어오고
+    state_buffer_simfreq_.block(num_cur_state*(num_state_skip*num_state_hist*frameskip_-1), 0, num_cur_state, 1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array(); //rui 50*(2*10*frameskip-1)~50*(2*10*frameskip) 50개 새로 채워주기
+    
+    // ** giving delay ** //
+    // Internal State First
+    for (int i = 0; i < num_state_hist; i++) //rui num_state_hist --> 10 num_cur_internal_state --> 37 (base_ori, q_noise, q_vel_noise, phase_sin, phase_cos, target_vel_x, target_vel_y, root_lin_vel, root_ang_vel)
+    {
+        // state_.block(num_cur_internal_state*i, 0, num_cur_internal_state, 1) = state_temp_.block(num_cur_state*(num_state_skip*(i+1)-1), 0, num_cur_internal_state, 1); //rui (37xi) ~ (37xi)+37 = (50xi) ~ (50xi)+37 
+        state_.block(num_cur_internal_state*i, 0, num_cur_internal_state, 1) = state_buffer_simfreq_.block(num_cur_state*(num_state_skip*frameskip_*(i+1)-1 - observation_delay_), 0, num_cur_internal_state, 1);
+    }
+    
+    // Action History Second
+    for (int i = 0; i < num_state_hist-1; i++)
+    {
+        // state_.block(num_state_hist*num_cur_internal_state + num_action*i, 0, num_action, 1) = state_temp_.block(num_cur_state*(i) + num_cur_internal_state, 0, num_action, 1); //rui (10x37+13xi) ~ (10x37+13xi)+13 = ((50xi)+37) ~ ((50xi)+37)+13
+        state_.block(num_state_hist*num_cur_internal_state + num_action*i, 0, num_action, 1) = state_buffer_simfreq_.block(num_cur_state*(num_state_skip*frameskip_*(i+1) - observation_delay_) + num_cur_internal_state, 0, num_action, 1); //rui (10x37+13xi) ~ (10x37+13xi)+13 = ((50xi)+37) ~ ((50xi)+37)+13
+    }
+    
+//!SECTION - //? 500Hz
 
 }
 
@@ -626,51 +470,54 @@ void CustomController::computeSlow()
 
             processNoise();
             processObservation();
-//? orig {
+            
+// orig {
             // for (int i = 0; i < num_state_skip*num_state_hist; i++) 
             // {
             //     state_buffer_.block(num_cur_state*i, 0, num_cur_state, 1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array();
             //     // state_buffer_.block(num_cur_state*i, 0, num_cur_state, 1).setZero();
             // }
-//? orig }
-//? 500Hz {
+// orig }
+//SECTION - //? 500Hz
             for (int i = 0; i < num_state_skip*frameskip_*num_state_hist; i++) //rui 0~2*8*5
             {
                 state_buffer_simfreq_.block(num_cur_state*i, 0, num_cur_state, 1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array();
             }
-//? 500Hz }
+            
+//!SECTION - //? 500Hz
         }
 //!SECTION - init
 
         processNoise();
-//? 500Hz {
+//SECTION - //? 500Hz
         processObservation();
-        // ** buffer size should be changed regarding to the policy frequency ** //
-        state_buffer_simfreq_.block(0, 0, num_cur_state*(num_state_skip*num_state_hist*frameskip_-1),1) = state_buffer_simfreq_.block(num_cur_state, 0, num_cur_state*(num_state_skip*num_state_hist*frameskip_-1),1); //rui 0~44*(2*5*8-1) = 44~44*(2*5*8), 44개만큼 끌어오고
-        state_buffer_simfreq_.block(num_cur_state*(num_state_skip*num_state_hist*frameskip_-1), 0, num_cur_state,1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array(); //rui 0~44*(2*5*8) 44개 새로 채워주기
-        // ** giving delay ** //
-        for (int i = 0; i < num_state_hist; i++){//rui num_state_hist --> 5 개의 0~44 
-            state_temp_.block(num_cur_state*(i), 0, num_cur_state, 1) = state_buffer_simfreq_.block(num_cur_state*(num_state_skip*frameskip_*(i+1)-1 - observation_delay_), 0, num_cur_state, 1); //rui 5 개의 44개 에다가 2000Hz에서 딜레이가 적용된 44크기의 state input
-        }
-        // Internal State First
-        for (int i = 0; i < num_state_hist; i++) //rui num_state_hist --> 5 num_cur_internal_state --> 31 (base_ori, q_noise, q_vel_noise, phase_sin, phase_cos, target_vel_x, target_vel_y)
-        {
-            state_.block(num_cur_internal_state*i, 0, num_cur_internal_state, 1) = state_temp_.block(num_cur_state*(i), 0, num_cur_internal_state, 1); //rui (31xi) ~ (31xi)+31 = (44x(2x(i+1)-1)) ~ (44x(2x(i+1)-1))+31 
-        }
-        // Action History Second
-        for (int i = 0; i < num_state_hist-1; i++)
-        {
-            state_.block(num_state_hist*num_cur_internal_state + num_action*i, 0, num_action, 1) = state_temp_.block(num_cur_state*(i+1) + num_cur_internal_state, 0, num_action, 1); //rui (5x31+13xi) ~ (5x31+13xi)+13 = ((44x2x(i+1))+31) ~ ((44x2x(i+1))+31)+13
-        }
-//? 500Hz }
+        
+        // // ** buffer size should be changed regarding to the policy frequency ** //
+        // state_buffer_simfreq_.block(0, 0, num_cur_state*(num_state_skip*num_state_hist*frameskip_-1),1) = state_buffer_simfreq_.block(num_cur_state, 0, num_cur_state*(num_state_skip*num_state_hist*frameskip_-1),1); //rui 0~44*(2*5*8-1) = 44~44*(2*5*8), 44개만큼 끌어오고
+        // state_buffer_simfreq_.block(num_cur_state*(num_state_skip*num_state_hist*frameskip_-1), 0, num_cur_state,1) = (state_cur_ - state_mean_).array() / state_var_.cwiseSqrt().array(); //rui 0~44*(2*5*8) 44개 새로 채워주기
+        // // ** giving delay ** //
+        // for (int i = 0; i < num_state_hist; i++){//rui num_state_hist --> 5 개의 0~44 
+        //     state_temp_.block(num_cur_state*(i), 0, num_cur_state, 1) = state_buffer_simfreq_.block(num_cur_state*(num_state_skip*frameskip_*(i+1)-1 - observation_delay_), 0, num_cur_state, 1); //rui 5 개의 44개 에다가 2000Hz에서 딜레이가 적용된 44크기의 state input
+        // }
+        // // Internal State First
+        // for (int i = 0; i < num_state_hist; i++) //rui num_state_hist --> 5 num_cur_internal_state --> 31 (base_ori, q_noise, q_vel_noise, phase_sin, phase_cos, target_vel_x, target_vel_y)
+        // {
+        //     state_.block(num_cur_internal_state*i, 0, num_cur_internal_state, 1) = state_temp_.block(num_cur_state*(i), 0, num_cur_internal_state, 1); //rui (31xi) ~ (31xi)+31 = (44x(2x(i+1)-1)) ~ (44x(2x(i+1)-1))+31 
+        // }
+        // // Action History Second
+        // for (int i = 0; i < num_state_hist-1; i++)
+        // {
+        //     state_.block(num_state_hist*num_cur_internal_state + num_action*i, 0, num_action, 1) = state_temp_.block(num_cur_state*(i+1) + num_cur_internal_state, 0, num_action, 1); //rui (5x31+13xi) ~ (5x31+13xi)+13 = ((44x2x(i+1))+31) ~ ((44x2x(i+1))+31)+13
+        // }
+//!SECTION - //? 500Hz
         // processObservation and feedforwardPolicy mean time: 15 us, max 53 us
-        // if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 >= 1/250.0 - 1/10000.0) //? orig
+        // if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 >= freq_scaler_ - 1/10000.0) // orig
 //SECTION - feedforwardPolicy
         if (policy_step >= frameskip_)
         {
-            // processObservation(); //? orig 
+            // processObservation(); // orig 
             feedforwardPolicy();
-            // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*5/250.0, 0.0, 5/250.0); //? orig 
+            // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*5/250.0, 0.0, 5/250.0); // orig 
 
             if (value_ < 50.0)
             {
@@ -682,6 +529,7 @@ void CustomController::computeSlow()
                     std::cout << "Stop by Value Function" << std::endl;
                 }
             }
+            std::cout << "Value : " << value_ << std::endl;
 
             if (is_write_file_)
             {
@@ -709,10 +557,10 @@ void CustomController::computeSlow()
 //!SECTION - feedforwardPolicy
         policy_step++;
         
-        action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_); 
+        action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*5*freq_scaler_, 0.0, 5*freq_scaler_); 
         // time_inputTorque_pre_ = rd_cc_.control_time_us_;
 
-//? 500Hz act delay
+//SECTION - //? 500Hz act delay
         //** put action into buffer **//num_action*(num_state_skip*frameskip_custom*num_state_hist)
         action_buffer_simfreq_.block(0, 0, num_action*(num_state_skip*frameskip_*num_state_hist-1),1) = action_buffer_simfreq_.block(num_action, 0, num_action*(num_state_skip*frameskip_*num_state_hist-1),1); //rui 0~13x(2*5*8-1) = 13~13x(2*5*8), 13개만큼 끌어오고
         action_buffer_simfreq_.block(num_action*(num_state_skip*frameskip_*num_state_hist-1), 0, num_action,1) = rl_action_; //rui 새로운 action로 채워주기
@@ -724,7 +572,7 @@ void CustomController::computeSlow()
         else{
             rl_action_simfreq_ = action_buffer_simfreq_.block(num_action*(num_state_skip*frameskip_*num_state_hist-1 - action_delay_), 0, num_action, 1);
         }
-//? 500Hz act delay
+//SECTION - //? 500Hz act delay
 
 
         for (int i = 0; i < num_actuator_action; i++)
@@ -865,6 +713,6 @@ double CustomController::computeReward()
 
 void CustomController::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
 {
-    target_vel_x_ = DyrosMath::minmax_cut(0.5*joy->axes[1], -0.2, 0.5);
-    target_vel_y_ = DyrosMath::minmax_cut(0.5*joy->axes[0], -0.2, 0.2);
+    target_vel_x_ = DyrosMath::minmax_cut(0.5 * joy->axes[1], -0.2, 0.5);
+    target_vel_y_ = DyrosMath::minmax_cut(0.5 * joy->axes[0], -0.2, 0.2);
 }
