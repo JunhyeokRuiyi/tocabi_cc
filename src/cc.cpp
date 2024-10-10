@@ -557,7 +557,7 @@ void CustomController::computeSlow()
 //!SECTION - feedforwardPolicy
         policy_step++;
         
-        action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*5*freq_scaler_, 0.0, 5*freq_scaler_); 
+        action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*5*freq_scaler_/frameskip_, 0.0, 5*freq_scaler_/frameskip_); 
         // time_inputTorque_pre_ = rd_cc_.control_time_us_;
 
 //SECTION - //? 500Hz act delay
