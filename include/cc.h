@@ -135,6 +135,7 @@ public:
     int observation_delay_;
     int frameskip_;
     double freq_scaler_;
+    double vel_cubic_scaler_;
     // auto data_path_;
     // auto target_vel_x_yaml_;
     // auto target_vel_y_yaml_;

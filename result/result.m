@@ -45,32 +45,66 @@ plot(d3(:,1),d3(:,12))
 
 % 206 207                writeFile << value_ << "\t" << stop_by_value_thres_;
 clear d
+
+% figure()
+% yyaxis left
+% plot(d(:,1),d(:,206), 'LineWidth', 7)
+% ylabel('Value','FontSize', 40, 'FontWeight','bold')
+% yyaxis right
+% plot(d(:,1),d(:,end), 'LineWidth', 7)
+% ylabel('IsStopped','FontSize', 40, 'FontWeight','bold')
+% 
+% set(gca,'FontSize',20, 'FontWeight','bold')
+% title('Emergent Stop Using Value Function','FontSize', 50)
+% xlabel('Time(s)','FontSize', 14, 'FontWeight','bold')
+% legend('Value','Stopped','FontSize', 50, 'FontWeight','bold')
+% grid on
+% ax = gca;
+% 
+% ax.GridColor = [0 0 0];
+% ax.GridLineStyle = '-';
+% ax.GridAlpha = 0.5;
+% 
+% figure()
+% plot(d(:,167))
+% 
+% figure()
+% plot(d(:,[6,12]),'DisplayName','d(:,[6,12])')
+
+% Load the data
 d = load('data.csv');
 
-figure()
-yyaxis left
-plot(d(:,1),d(:,206), 'LineWidth', 7)
-ylabel('Value','FontSize', 40, 'FontWeight','bold')
-yyaxis right
-plot(d(:,1),d(:,end), 'LineWidth', 7)
-ylabel('IsStopped','FontSize', 40, 'FontWeight','bold')
+% Extract time differences (assuming the 1st column contains time differences)
+time_differences = d(:,1); 
 
-set(gca,'FontSize',20, 'FontWeight','bold')
-title('Emergent Stop Using Value Function','FontSize', 50)
-xlabel('Time(s)','FontSize', 14, 'FontWeight','bold')
-legend('Value','Stopped','FontSize', 50, 'FontWeight','bold')
-grid on
-ax = gca;
+% Compute cumulative sum of time differences to get timestamps
+time_stamps = cumsum(time_differences);
 
-ax.GridColor = [0 0 0];
-ax.GridLineStyle = '-';
-ax.GridAlpha = 0.5;
+% Plotting for figure 1
+figure(1);
+hold on; grid on;
+plot(time_stamps, d(:,6), 'LineWidth', 1);  % Use time_stamps as x-axis
+plot(time_stamps, d(:,12), 'LineWidth', 1);  % Use time_stamps as x-axis
+ylabel('FT','FontSize', 40, 'FontWeight','bold');
+xlabel('Time(s)','FontSize', 40, 'FontWeight','bold');
 
-figure()
-plot(d(:,167))
 
-figure()
-plot(d(:,[6,12]),'DisplayName','d(:,[6,12])')
+% hold on; grid on;
+% for i = 4:9
+%     plot(time_stamps, d(:,i), 'LineWidth', 7);  % Use time_stamps as x-axis
+% end
+% ylabel('LF FT','FontSize', 40, 'FontWeight','bold');
+% xlabel('Time(s)','FontSize', 40, 'FontWeight','bold');
+% 
+% % Plotting for figure 2
+% figure(2);
+% hold on; grid on;
+% for i = 10:15
+%     plot(time_stamps, d(:,i), 'LineWidth', 7);  % Use time_stamps as x-axis
+% end
+% ylabel('LF_FT','FontSize', 40, 'FontWeight','bold');
+% xlabel('Time(s)','FontSize', 40, 'FontWeight','bold');
+
 %%
 figure()
 for i=1:12

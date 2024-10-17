@@ -27,6 +27,10 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
     std::cout << "frameskip : " << frameskip_ << std::endl;
     ros::param::get("/tocabi_controller/freq_scaler", freq_scaler_); 
     std::cout << "freq_scaler : " << freq_scaler_ << std::endl;
+    ros::param::get("/tocabi_controller/vel_cubic_scaler", vel_cubic_scaler_); 
+    std::cout << "freq_scaler : " << vel_cubic_scaler_ << std::endl;
+    ros::param::get("/tocabi_controller/is_on_robot", is_on_robot_); 
+    std::cout << "is_on_robot : " << is_on_robot_ << std::endl;
 
     action_buffer_length = 0;
 
@@ -311,7 +315,7 @@ void CustomController::processObservation()
     
     //;5) commands: x, y                           (2)     30:32
     // if (rd_cc_.control_time_us_ < start_time_ + 10e6) {
-    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_, start_time_ + 3e6, 0.0, target_vel_x_yaml_, 0.0, 0.0);
+    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_, start_time_ + vel_cubic_scaler_, 0.0, target_vel_x_yaml_, 0.0, 0.0);
     //     // desired_vel_yaw = 0.0;
     // }
     // else if (rd_cc_.control_time_us_ < start_time_ + 20e6) {
@@ -320,7 +324,7 @@ void CustomController::processObservation()
     //     // desired_vel_yaw = 0.0;
     // }
     // else if (rd_cc_.control_time_us_ < start_time_ + 30e6) {
-    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 26e6, start_time_ + 29e6, target_vel_x_yaml_, 0.0, 0.0, 0.0);
+    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 26e6, start_time_ + 26e6 + vel_cubic_scaler_, target_vel_x_yaml_, 0.0, 0.0, 0.0);
     //     // desired_vel_yaw = 0.0;
     // }
     // else {
@@ -330,7 +334,7 @@ void CustomController::processObservation()
     
     
     // state_cur_(data_idx) = desired_vel_x;//target_vel_x_; //rui 1
-    state_cur_(data_idx) = 0.4;//target_vel_x_; //rui 1
+    state_cur_(data_idx) = target_vel_x_yaml_;//target_vel_x_; //rui 1
     data_idx++;
 
     // state_cur_(data_idx) = target_vel_y_yaml_;//target_vel_y_; //rui 1
@@ -511,9 +515,9 @@ void CustomController::computeSlow()
         // }
 //!SECTION - //? 500Hz
         // processObservation and feedforwardPolicy mean time: 15 us, max 53 us
-        // if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 >= freq_scaler_ - 1/10000.0) // orig
+        if ((rd_cc_.control_time_us_ - time_inference_pre_)/1.0e6 >= freq_scaler_ - 1/10000.0) // orig
 //SECTION - feedforwardPolicy
-        if (policy_step >= frameskip_)
+        // if (policy_step >= frameskip_)
         {
             // processObservation(); // orig 
             feedforwardPolicy();
@@ -552,12 +556,12 @@ void CustomController::computeSlow()
             }
             // std::cout << policy_step << " " << rd_cc_.control_time_us_ - time_inference_pre_ << " " << value_ << " " << stop_by_value_thres_ << std::endl;
             time_inference_pre_ = rd_cc_.control_time_us_;
-            policy_step = 0;
+            // policy_step = 0;
         }
 //!SECTION - feedforwardPolicy
-        policy_step++;
+        // policy_step++;
         
-        action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*5*freq_scaler_/frameskip_, 0.0, 5*freq_scaler_/frameskip_); 
+        action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*5*0.0005, 0.0, 5*0.0005); 
         // time_inputTorque_pre_ = rd_cc_.control_time_us_;
 
 //SECTION - //? 500Hz act delay
