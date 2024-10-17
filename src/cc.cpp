@@ -27,6 +27,8 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
     std::cout << "frameskip : " << frameskip_ << std::endl;
     ros::param::get("/tocabi_controller/freq_scaler", freq_scaler_); 
     std::cout << "freq_scaler : " << freq_scaler_ << std::endl;
+    ros::param::get("/tocabi_controller/is_on_robot", is_on_robot_); 
+    std::cout << "is_on_robot_ : " << is_on_robot_ << std::endl;
     
     action_buffer_length = 0;
 
