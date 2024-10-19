@@ -31,6 +31,8 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
     std::cout << "freq_scaler : " << vel_cubic_scaler_ << std::endl;
     ros::param::get("/tocabi_controller/is_on_robot", is_on_robot_); 
     std::cout << "is_on_robot : " << is_on_robot_ << std::endl;
+    ros::param::get("/tocabi_controller/is_write_file", is_write_file_); 
+    std::cout << "is_write_file : " << is_write_file_ << std::endl;
 
     action_buffer_length = 0;
 
