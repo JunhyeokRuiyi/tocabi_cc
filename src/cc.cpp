@@ -525,7 +525,7 @@ void CustomController::computeSlow()
             feedforwardPolicy();
             // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*5/250.0, 0.0, 5/250.0); // orig 
 
-            if (value_ < 70.0 || value_ > 150.0)
+            if (value_ < 50.0 || value_ > 200.0)
             {
                 if (stop_by_value_thres_ == false)
                 {
