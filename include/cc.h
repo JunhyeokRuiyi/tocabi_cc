@@ -2,6 +2,7 @@
 #include "wholebody_functions.h"
 #include <random>
 #include <cmath>
+#include "tocabi_msgs/FTsensor.h" // real robot experiment
 
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
@@ -29,6 +30,7 @@ public:
     void processObservation2();
     void feedforwardPolicy();
     void initVariable();
+    void OptoforceFTCallback(const tocabi_msgs::FTsensor &msg); // real robot experiment
     Eigen::Vector3d mat2euler(Eigen::Matrix3d mat);
 
     static const int num_action = 13;
@@ -40,6 +42,8 @@ public:
     static const int num_state = num_cur_internal_state*num_state_hist+num_action*(num_state_hist-1); //rui 207
     static const int num_hidden = 256;
     
+    Eigen::Vector6d opto_ft_raw_;
+    Eigen::Vector6d opto_ft_;
 
     Eigen::MatrixXd policy_net_w0_;
     Eigen::MatrixXd policy_net_b0_;
@@ -81,7 +85,7 @@ public:
     float phase_ = 0.0;
     float phase_2 = 0.0;
 
-    bool is_on_robot_ = false;
+    bool is_on_robot_ = true;
     bool is_write_file_ = true;
     Eigen::Matrix<double, MODEL_DOF, 1> q_dot_lpf_;
 
@@ -115,6 +119,8 @@ public:
 
     void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
     ros::Subscriber joy_sub_;
+    ros::Subscriber opto_ftsensor_sub;
+
 
     double target_vel_x_ = 0.0;
     double target_vel_x_yaml = 0.0;
