@@ -2,6 +2,7 @@
 #include "wholebody_functions.h"
 #include <random>
 #include <cmath>
+#include "tocabi_msgs/FTsensor.h" // real robot experiment
 
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
@@ -29,6 +30,7 @@ public:
     void processObservation2();
     void feedforwardPolicy();
     void initVariable();
+    void OptoforceFTCallback(const tocabi_msgs::FTsensor &msg); // real robot experiment
     Eigen::Vector3d mat2euler(Eigen::Matrix3d mat);
 
     static const int num_action = 13;
@@ -40,7 +42,9 @@ public:
     static const int num_state = num_cur_internal_state*num_state_hist+num_action*(num_state_hist-1); //rui 207
     static const int num_hidden = 256;
     
-
+    Eigen::Vector6d opto_ft_raw_;
+    Eigen::Vector6d opto_ft_;
+    
     Eigen::MatrixXd policy_net_w0_;
     Eigen::MatrixXd policy_net_b0_;
     Eigen::MatrixXd policy_net_w2_;
@@ -114,9 +118,12 @@ public:
     ros::NodeHandle nh_;
 
     void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
-    ros::Subscriber joy_sub_;
+    ros::Subscriber joy_sub_;    
+    ros::Subscriber opto_ftsensor_sub;
+
 
     double target_vel_x_ = 0.0;
+    double target_vel_x_yaml = 0.0;
     double target_vel_y_ = 0.0;
 
     float freq_scaler_ = 1/50;
@@ -126,6 +133,7 @@ public:
     int frameskip_custom = 40;//rui frameskip 250Hz -> 8, 200Hz -> 10, 150Hz -> 13, 125Hz -> 16, 100Hz -> 20, 62.5Hz -> 32, 50Hz -> 40, 40Hz -> 50 size
     bool just_after_init = true;
     int action_buffer_length = 0;
+    std::string data_path;
     Eigen::MatrixXd rl_action_2000_; //rui
 
 

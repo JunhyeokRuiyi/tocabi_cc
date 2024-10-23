@@ -3,20 +3,57 @@
 #include <yaml-cpp/yaml.h>
 
 using namespace TOCABI;
+ofstream MJ_opto("/home/dyros/catkin_ws/src/tocabi_cc/result/ijrrdata/opto_result.txt");
 
 CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
 {
     ControlVal_.setZero();
 
+    if(is_on_robot_) {
+        try {
+            YAML::Node node = YAML::LoadFile("/home/dyros/catkin_ws/src/tocabi_cc/include/delay_config.yaml");
+            // auto delay = node["delay"];
+            auto data_path_ = node["result"]["real"].as<std::string>();
+            auto target_vel_x_yaml_ = node["target_vel"]["x"].as<double>();
+            target_vel_x_yaml = target_vel_x_yaml_;
+            data_path = data_path_;
+
+
+        }
+        catch(const YAML::BadFile& e) {
+            std::cerr << e.msg << std::endl;
+        }
+        catch (YAML::ParserException &e){
+            std::cerr << e.msg << std::endl;
+        }
+    }
+    else{
+        try {
+            YAML::Node node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/include/delay_config.yaml");
+            // auto delay = node["delay"];
+            auto data_path_ = node["result"]["sim"].as<std::string>();
+            auto target_vel_x_yaml_ = node["target_vel"]["x"].as<double>();
+            data_path = data_path_;
+            target_vel_x_yaml = target_vel_x_yaml_;
+
+        }
+        catch(const YAML::BadFile& e) {
+            std::cerr << e.msg << std::endl;
+        }
+        catch (YAML::ParserException &e){
+            std::cerr << e.msg << std::endl;
+        }
+    }
+
     if (is_write_file_)
     {
         if (is_on_robot_)
         {
-            writeFile.open("/home/dyros/catkin_ws/src/tocabi_cc/result/iserdata/data.csv", std::ofstream::out | std::ofstream::app);
+            writeFile.open(data_path, std::ofstream::out | std::ofstream::app);
         }
         else
         {
-            writeFile.open("/home/dyros/tocabi_ws/src/tocabi_cc/result/iserdata/data_0.csv", std::ofstream::out | std::ofstream::app);
+            writeFile.open(data_path, std::ofstream::out | std::ofstream::app);
         }
         writeFile << std::fixed << std::setprecision(8);
     }
@@ -24,13 +61,23 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
     loadNetwork();
 
     joy_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 10, &CustomController::joyCallback, this);
+    opto_ftsensor_sub = nh_.subscribe("/optoforce/ftsensor", 100, &CustomController::OptoforceFTCallback, this); // real robot experiment
 }
 
 Eigen::VectorQd CustomController::getControl()
 {
     return ControlVal_;
 }
-
+// real robot experiment
+void CustomController::OptoforceFTCallback(const tocabi_msgs::FTsensor &msg)
+{
+    opto_ft_raw_(0) = msg.Fx;
+    opto_ft_raw_(1) = msg.Fy;
+    opto_ft_raw_(2) = msg.Fz;
+    opto_ft_raw_(3) = msg.Tx;
+    opto_ft_raw_(4) = msg.Ty;
+    opto_ft_raw_(5) = msg.Tz;
+}
 void CustomController::loadNetwork() //rui weight 불러오기 weight TocabiRL 파일 저장된 12개 파일 저장해주면 됨
 {
     state_.setZero();
@@ -465,7 +512,7 @@ void CustomController::processObservation() //rui observation 만들어주기
     state_cur_(data_idx) = cos(2*M_PI*phase_); //rui 1
     data_idx++;
 
-    state_cur_(data_idx) = 0.2;//target_vel_x_; //rui 1
+    state_cur_(data_idx) = target_vel_x_yaml;//target_vel_x_; //rui 1
     data_idx++;
 
     state_cur_(data_idx) = target_vel_y_; //rui 1
@@ -639,7 +686,7 @@ void CustomController::computeSlow() //rui main
         }
         // //! 2000Hz
 
-        cout << "a " << action_delay << "o " << observation_delay << " " << endl;
+        // cout << "a " << action_delay << "o " << observation_delay << " " << endl;
         
         // //! 2000Hz obs delay
         // ** buffer size should be changed regarding to the policy frequency ** //
@@ -749,6 +796,10 @@ void CustomController::computeSlow() //rui main
         {
             if ((rd_cc_.control_time_us_ - time_write_pre_)/1e6 > 1/240.0)
             {
+                // real robot experiment
+                opto_ft_ = opto_ft_raw_; 
+                cout << opto_ft_(0) << "," << opto_ft_(1) << "," << opto_ft_(2) << endl; 
+                MJ_opto <<  opto_ft_(0) << "," << opto_ft_(1) << "," << opto_ft_(2) << "," << opto_ft_(3) << "," << opto_ft_(4) << "," << opto_ft_(5) << endl; 
                 writeFile << (rd_cc_.control_time_us_ - start_time_)/1e6 << "\t";
                 writeFile << phase_ << "\t";
                 // writeFile << DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_) << "\t";
