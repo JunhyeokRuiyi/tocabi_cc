@@ -8,4 +8,4 @@ target_vel:
   x: 0.5
 result:
   sim: /home/dyros/tocabi_ws/src/tocabi_cc/result/iserdata_ppt/data_250_speed0.5.csv
-  real: /home/dyros/catkin_ws/data_
+  real: /home/dyros/catkin_ws/src/tocabi_cc/result/ijrrdata/data_62.5_speed0.5_perturb.csv
