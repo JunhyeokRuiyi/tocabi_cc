@@ -3,6 +3,7 @@
 #include <yaml-cpp/yaml.h>
 
 using namespace TOCABI;
+ofstream MJ_opto("/home/dyros/catkin_ws/src/tocabi_cc/result/ijrrdata/opto_result.txt");
 
 CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
 {
@@ -55,16 +56,32 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
             writeFile.open(data_path, std::ofstream::out | std::ofstream::app);
         }
         writeFile << std::fixed << std::setprecision(8);
+        
+
     }
     initVariable();
     loadNetwork();
 
     joy_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 10, &CustomController::joyCallback, this);
+    opto_ftsensor_sub = nh_.subscribe("/optoforce/ftsensor", 100, &CustomController::OptoforceFTCallback, this); // real robot experiment
+
 }
 
 Eigen::VectorQd CustomController::getControl()
 {
     return ControlVal_;
+}
+
+
+// real robot experiment
+void CustomController::OptoforceFTCallback(const tocabi_msgs::FTsensor &msg)
+{
+    opto_ft_raw_(0) = msg.Fx;
+    opto_ft_raw_(1) = msg.Fy;
+    opto_ft_raw_(2) = msg.Fz;
+    opto_ft_raw_(3) = msg.Tx;
+    opto_ft_raw_(4) = msg.Ty;
+    opto_ft_raw_(5) = msg.Tz;
 }
 
 void CustomController::loadNetwork() //rui weight 불러오기 weight TocabiRL 파일 저장된 12개 파일 저장해주면 됨
@@ -784,6 +801,10 @@ void CustomController::computeSlow() //rui main
         {
             if ((rd_cc_.control_time_us_ - time_write_pre_)/1e6 > 1/240.0)
             {
+                // real robot experiment
+                opto_ft_ = opto_ft_raw_; 
+                cout << opto_ft_(0) << "," << opto_ft_(1) << "," << opto_ft_(2) << endl; 
+                MJ_opto <<  opto_ft_(0) << "," << opto_ft_(1) << "," << opto_ft_(2) << "," << opto_ft_(3) << "," << opto_ft_(4) << "," << opto_ft_(5) << endl; 
                 writeFile << (rd_cc_.control_time_us_ - start_time_)/1e6 << "\t";
                 writeFile << phase_ << "\t";
                 // writeFile << DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_) << "\t";
