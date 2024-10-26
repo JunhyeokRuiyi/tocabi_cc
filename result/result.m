@@ -81,7 +81,7 @@ time_differences = d(:,1);
 time_stamps = cumsum(time_differences);
 
 % Plotting for figure 1
-figure(1);
+figure();
 hold on; grid on;
 plot(time_stamps, d(:,6), 'LineWidth', 1);  % Use time_stamps as x-axis
 plot(time_stamps, d(:,12), 'LineWidth', 1);  % Use time_stamps as x-axis

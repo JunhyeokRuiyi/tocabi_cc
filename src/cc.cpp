@@ -316,27 +316,27 @@ void CustomController::processObservation()
     data_idx++;
     
     //;5) commands: x, y                           (2)     30:32
-    // if (rd_cc_.control_time_us_ < start_time_ + 10e6) {
-    //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_, start_time_ + vel_cubic_scaler_, 0.0, target_vel_x_yaml_, 0.0, 0.0);
-    //     // desired_vel_yaw = 0.0;
-    // }
-    // else if (rd_cc_.control_time_us_ < start_time_ + 20e6) {
-    //     // desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 14e6, start_time_ + 19e6, 0.3, 0.0, 0.0, 0.0);
-    //     desired_vel_x = target_vel_x_yaml_;
-    //     // desired_vel_yaw = 0.0;
-    // }
+    if (rd_cc_.control_time_us_ < start_time_ + 10e6) {
+        desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_, start_time_ + vel_cubic_scaler_, 0.0, target_vel_x_yaml_, 0.0, 0.0);
+        // desired_vel_yaw = 0.0;
+    }
+    else if (rd_cc_.control_time_us_ < start_time_ + 20e6) {
+        // desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 14e6, start_time_ + 19e6, 0.3, 0.0, 0.0, 0.0);
+        desired_vel_x = target_vel_x_yaml_;
+        // desired_vel_yaw = 0.0;
+    }
     // else if (rd_cc_.control_time_us_ < start_time_ + 30e6) {
     //     desired_vel_x = DyrosMath::cubic(rd_cc_.control_time_us_, start_time_ + 26e6, start_time_ + 26e6 + vel_cubic_scaler_, target_vel_x_yaml_, 0.0, 0.0, 0.0);
     //     // desired_vel_yaw = 0.0;
     // }
-    // else {
-    //     desired_vel_x = 0.0;
-    //     // desired_vel_yaw = 0.0;
-    // }
+    else {
+        desired_vel_x = target_vel_x_yaml_;
+        // desired_vel_yaw = 0.0;
+    }
     
     
-    // state_cur_(data_idx) = desired_vel_x;//target_vel_x_; //rui 1
-    state_cur_(data_idx) = target_vel_x_yaml_;//target_vel_x_; //rui 1
+    state_cur_(data_idx) = desired_vel_x;//target_vel_x_; //rui 1
+    // state_cur_(data_idx) = target_vel_x_yaml_;//target_vel_x_; //rui 1
     data_idx++;
 
     // state_cur_(data_idx) = target_vel_y_yaml_;//target_vel_y_; //rui 1
@@ -525,7 +525,7 @@ void CustomController::computeSlow()
             feedforwardPolicy();
             // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*5/250.0, 0.0, 5/250.0); // orig 
 
-            if (value_ < 50.0 || value_ > 200.0)
+            if (value_ < 50.0)
             {
                 if (stop_by_value_thres_ == false)
                 {
