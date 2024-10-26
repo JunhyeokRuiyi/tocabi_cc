@@ -7,8 +7,8 @@ target_vel_y: 0.0
 delay_action: 0
 delay_observation: 0
 
-frameskip: 16 # 4 500Hz frameskip * freq = 2000
-freq_scaler: 0.008 # 0.004 for 250Hz, 0.002 for 500Hz 1/500Hz
+frameskip: 8 # 4 500Hz frameskip * freq = 2000
+freq_scaler: 0.004 # 0.004 for 250Hz, 0.002 for 500Hz 1/500Hz
 vel_cubic_scaler: 1
 is_on_robot: False
 is_write_file: True
