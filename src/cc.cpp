@@ -56,11 +56,12 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
         }
         writeFile << std::fixed << std::setprecision(8);
     }
+    initVariable();
+    loadNetwork();
+    
     ros::param::get("/tocabi_controller/ext_time",param_ext_force_time_);
     ros::param::get("/tocabi_controller/extforce_x",ext_force_x_);
     ros::param::get("/tocabi_controller/extforce_y",ext_force_y_);
-    initVariable();
-    loadNetwork();
 
     joy_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 10, &CustomController::joyCallback, this);
     mujoco_ext_force_apply_pub = nh_.advertise<std_msgs::Float32MultiArray>("/tocabi_avatar/applied_ext_force", 10);

@@ -12,8 +12,12 @@
 # vel_cubic_scaler: 1
 # is_on_robot: False
 # is_write_file: True
-extforce_x: -360
-extforce_y: -0
+# extforce_x: -340
+extforce_x: -0
+# extforce_y: -340
+extforce_y: -340
 
-# ext_time: 5
-ext_time: 3.9
+
+# ext_time: 2.4 #x
+# ext_time: 3.3 #y
+ext_time: 0
