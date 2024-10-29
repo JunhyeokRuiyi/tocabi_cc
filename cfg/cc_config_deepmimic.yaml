@@ -13,9 +13,9 @@
 # is_on_robot: False
 # is_write_file: True
 # extforce_x: -270
-extforce_x: -0
+extforce_x: -150
 # extforce_y: -230
-extforce_y: -230
+extforce_y: -150
 
 # ext_time: 5
 # ext_time: 2.1

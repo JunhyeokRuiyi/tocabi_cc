@@ -145,7 +145,7 @@ public:
     int action_buffer_length = 0;
     std::string data_path;
     Eigen::MatrixXd rl_action_2000_; //rui
-
+    bool all_force_applied = false;
 
 private:
     Eigen::VectorQd ControlVal_;
