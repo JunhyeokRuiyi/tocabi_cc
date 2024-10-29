@@ -726,7 +726,7 @@ void CustomController::computeSlow() //rui main
 
             // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_);
             if (is_write_file_) //rui 파일 write
-            {
+            {       
                     double reward = computeReward();
                     writeFile << (rd_cc_.control_time_us_ - time_inference_pre_)/1e6 << "\t";
                     writeFile << phase_ << "\t";
@@ -756,6 +756,11 @@ void CustomController::computeSlow() //rui main
             time_inference_pre_ = rd_cc_.control_time_us_;
 
         }
+        LF_FT_pre_ = rd_cc_.LF_FT;
+        RF_FT_pre_ = rd_cc_.RF_FT;
+        rl_action_pre_ = rl_action_;
+        q_vel_noise_pre_ = q_vel_noise_;
+
         action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_tester_2000HZ, 0.0, freq_tester_2000HZ); 
         // time_inputTorque_pre_ = rd_cc_.control_time_us_;
         // //! 2000Hz act delay
@@ -879,9 +884,10 @@ double CustomController::computeReward()
     double qpos_regulation = 0.35 * std::exp(-2.0 * pow((joint_position_target - q_noise_).norm(),2));
     double qvel_regulation = 0.05 * std::exp(-0.01 * pow((q_vel_noise_).norm(),2));
 
-    double contact_force_diff_regulation = 0.2 * std::exp(-0.01*((rd_cc_.LF_FT-LF_FT_pre_).norm() + (rd_cc_.RF_FT-LF_FT_pre_).norm()));
+    double contact_force_diff_regulation = 0.2 * std::exp(-0.01/250.0*(((rd_cc_.LF_FT-LF_FT_pre_)*(2000.0/frameskip_custom)).norm() + ((rd_cc_.RF_FT-LF_FT_pre_)*(2000.0/frameskip_custom)).norm()));
+    // std::cout << "2000.0/frameskip_custom : " << 2000.0/frameskip_custom << " " << typeid(2000.0/frameskip_custom).name()<< std::endl;
     double torque_regulation = 0.05 * std::exp(-0.01 * (rl_action_.block(0,0,12,1)*333).norm());
-    double torque_diff_regulation = 0.6 * std::exp(-0.01 * ((rl_action_.block(0,0,12,1)-rl_action_pre_.block(0,0,12,1))*333).norm());
+    double torque_diff_regulation = 0.6 * std::exp(-0.01/250.0* ((rl_action_.block(0,0,12,1)-rl_action_pre_.block(0,0,12,1))*(2000.0/frameskip_custom)*333).norm());
     double qacc_regulation = 0.05 * std::exp(-20.0*pow((q_vel_noise_-q_vel_noise_pre_).norm(),2));
     Eigen::Vector2d target_vel;
     Eigen::Vector2d cur_vel;
@@ -924,10 +930,10 @@ double CustomController::computeReward()
     }
     double force_ref_reward = 0.1*std::exp(-0.001*(abs(rd_cc_.LF_FT(2)+force_target(0)))) + 0.1*std::exp(-0.001*(abs(rd_cc_.RF_FT(2)+force_target(1))));
     
-    LF_FT_pre_ = rd_cc_.LF_FT;
-    RF_FT_pre_ = rd_cc_.RF_FT;
-    rl_action_pre_ = rl_action_;
-    q_vel_noise_pre_ = q_vel_noise_;
+    // LF_FT_pre_ = rd_cc_.LF_FT;
+    // RF_FT_pre_ = rd_cc_.RF_FT;
+    // rl_action_pre_ = rl_action_;
+    // q_vel_noise_pre_ = q_vel_noise_;
 
     double total_reward = mimic_body_orientation_reward + qpos_regulation + qvel_regulation + contact_force_penalty + 
         torque_regulation + torque_diff_regulation + body_vel_reward + qacc_regulation + foot_contact_reward + 
