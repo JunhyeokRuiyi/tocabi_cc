@@ -121,171 +121,108 @@ plot(d(1:1000,1),d(1:1000,12))
 plot(d2(1:1000,1),d2(1:1000,6))
 plot(d2(1:1000,1),d2(1:1000,12))
 
+
 %%
 clc; clearvars;
 
-% Specify the CSV file name
+% Read the CSV file starting from the second row to exclude headers
 filename = 'data_250.csv';
+data = readmatrix(filename, 'NumHeaderLines', 1);
 
-% Detect import options for reading data starting from the second row
-opts = detectImportOptions(filename);
-opts.DataLines = [2 Inf]; % Read from the second row to the end
-data = readmatrix(filename, opts);
+% Extracting columns from the data
+time_diff = data(:, 1); % Column 1: Time differences
+phase = data(:, 2); % Column 2: Gait phase
+reward = data(:, 208); % Column 208: Reward
+reward(isnan(reward)) = 0; % Replace NaN values in reward with zeros
+LF_FT = data(:, 4:9); % Columns 4-9: Left Foot Force
+RF_FT = data(:, 10:15); % Columns 10-15: Right Foot Force
+LF_CF_FT_Z = data(:, 18); % Column 18: Left Foot Clearance (Z)
+RF_CF_FT_Z = data(:, 24); % Column 24: Right Foot Clearance (Z)
+torque_desired = data(:, 28:60); % Columns 28-60: Joint Torque Desired
+q_dot_virtual = data(:, 127:165); % Columns 127-165: Joint Velocities
 
-% Extract each column or set of columns as specified
-elapsed_time_sec = data(:, 1); % Column 1: Elapsed time in seconds
-phase = data(:, 2); % Column 2: Phase
+% Create cumulative time series from the differences
+time = cumsum(time_diff); % Now, 'time' can be used as the x-axis
 
-% Column 3: Min-max cut value
-minmax_cut_value = data(:, 3);
+% %% Plot Joint Torque Action Over Time
+% figure('Name', 'Joint Torque Over Time', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+% plot(time, torque_desired, 'LineWidth', 1.5);
+% xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+% ylabel('Joint Torque (Nm)', 'FontWeight', 'bold', 'FontSize', 12);
+% title('Joint Torque Action Over Time', 'FontWeight', 'bold', 'FontSize', 14);
+% grid on;
+% set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+% 
+% %% Plot Foot Force Trajectories Over Time
+% figure('Name', 'Foot Forces Over Time', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+% plot(time, LF_FT, 'LineWidth', 1.5);
+% hold on;
+% plot(time, RF_FT, 'LineWidth', 1.5);
+% xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+% ylabel('Force (N)', 'FontWeight', 'bold', 'FontSize', 12);
+% title('Left and Right Foot Forces Over Time', 'FontWeight', 'bold', 'FontSize', 14);
+% legend('LF X', 'LF Y', 'LF Z', 'LF Mx', 'LF My', 'LF Mz', 'RF X', 'RF Y', 'RF Z', 'RF Mx', 'RF My', 'RF Mz');
+% grid on;
+% set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+% 
+% %% Plot Gait Phase Over Time
+% figure('Name', 'Gait Phase Over Time', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+% stairs(time, phase, 'LineWidth', 1.5);
+% xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+% ylabel('Gait Phase', 'FontWeight', 'bold', 'FontSize', 12);
+% title('Gait Phase Over Time', 'FontWeight', 'bold', 'FontSize', 14);
+% grid on;
+% set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+% 
+% %% Plot Control Effort Over Time
+control_effort = sum(torque_desired.^2, 2); % Sum of squared torques
+% figure('Name', 'Control Effort Over Time', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+% plot(time, control_effort, 'LineWidth', 2);
+% xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+% ylabel('Control Effort (Sum of Squared Torques)', 'FontWeight', 'bold', 'FontSize', 12);
+% title('Control Effort Over Time', 'FontWeight', 'bold', 'FontSize', 14);
+% grid on;
+% set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+% 
+% %% Plot Accumulated Reward Over Time
+% accumulated_reward = cumsum(reward);
+% figure('Name', 'Accumulated Reward Over Time', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+% plot(time, accumulated_reward, 'Color', [0.1, 0.7, 0.2], 'LineWidth', 2);
+% xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+% ylabel('Accumulated Reward', 'FontWeight', 'bold', 'FontSize', 12);
+% title('Accumulated Reward Over Time', 'FontWeight', 'bold', 'FontSize', 14);
+% grid on;
+% set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+% 
+% %% Plot Foot Clearance Over Time
+% figure('Name', 'Foot Clearance Over Time', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+% plot(time, LF_CF_FT_Z, 'LineWidth', 1.5);
+% hold on;
+% plot(time, RF_CF_FT_Z, 'LineWidth', 1.5);
+% xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+% ylabel('Foot Clearance (m)', 'FontWeight', 'bold', 'FontSize', 12);
+% title('Foot Clearance Over Time', 'FontWeight', 'bold', 'FontSize', 14);
+% legend('Left Foot', 'Right Foot');
+% grid on;
+% set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+% 
+% %% Plot Joint Velocities Over Time
+% figure('Name', 'Joint Velocities Over Time', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+% plot(time, q_dot_virtual, 'LineWidth', 1.5);
+% xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+% ylabel('Joint Velocities (rad/s)', 'FontWeight', 'bold', 'FontSize', 12);
+% title('Joint Velocities Over Time', 'FontWeight', 'bold', 'FontSize', 14);
+% grid on;
+% set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
 
-% Columns 4-9: Left Foot Force-Torque data
-LF_FT = data(:, 4:9);
+% Plot Reward vs. Control Effort (Scatter Plot)
+figure('Name', 'Reward vs Control Effort', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+scatter(control_effort, reward, 50, 'filled', 'MarkerEdgeColor', [0, 0.5, 0.5], 'MarkerFaceColor', [0, 0.7, 0.7], 'MarkerFaceAlpha', 0.6);
+xlabel('Control Effort (Sum of Squared Torque)', 'FontWeight', 'bold', 'FontSize', 14);
+ylabel('Reward', 'FontWeight', 'bold', 'FontSize', 14);
+title('Reward vs Control Effort', 'FontWeight', 'bold', 'FontSize', 16);
+grid on;
+set(gca, 'GridAlpha', 0.4, 'FontSize', 14);
+box on;
+set(gca, 'LineWidth', 1.2);
 
-% Columns 10-15: Right Foot Force-Torque data
-RF_FT = data(:, 10:15);
-
-% Columns 16-21: Left Foot Compensated Force-Torque data
-LF_CF_FT = data(:, 16:21);
-
-% Columns 22-27: Right Foot Compensated Force-Torque data
-RF_CF_FT = data(:, 22:27);
-
-% Columns 28-60: Desired Torque
-torque_desired = data(:, 28:60);
-
-% Columns 61-93: Joint Position Noise Values
-q_noise = data(:, 61:93);
-
-% Columns 94-126: Low-pass Filtered Joint Velocities
-q_dot_lpf = data(:, 94:126);
-
-% Columns 127-165: Virtual Joint Velocities
-q_dot_virtual = data(:, 127:165);
-
-% Columns 166-205: Virtual Joint Positions
-q_virtual = data(:, 166:205);
-
-% Columns 206-208: Value, Stop Threshold, and Reward
-value = data(:, 206);
-stop_by_value_thres = data(:, 207);
-reward = data(:, 208);
-
-% Calculate Accumulated Reward up to 32 Seconds
-% Find indices where elapsed time is less than or equal to 32 seconds
-indices_32 = find(elapsed_time_sec <= 32);
-accumulated_reward_32 = sum(reward(indices_32));
-
-% Display accumulated reward at 32 seconds in the command window
-fprintf('Accumulated Reward at 32 Seconds: %.4f\n', accumulated_reward_32);
-
-% Plot settings
-figure;
-set(gcf, 'Position', [100, 100, 1400, 900]); % Set figure size
-
-% Plot 1: Elapsed Time vs Phase
-subplot(3, 2, 1);
-plot(elapsed_time_sec, phase, '-o', 'LineWidth', 1.5, 'MarkerIndices', 1:200:length(phase));
-title('Elapsed Time vs Phase', 'FontSize', 14, 'FontWeight', 'bold');
-xlabel('Elapsed Time (s)', 'FontSize', 12);
-ylabel('Phase', 'FontSize', 12);
-grid on; grid minor;
-set(gca, 'FontSize', 12);
-
-% Plot 2: Min-Max Cut Value
-subplot(3, 2, 2);
-plot(elapsed_time_sec, minmax_cut_value, '-s', 'LineWidth', 1.5, 'MarkerIndices', 1:200:length(minmax_cut_value), 'Color', [0.85 0.33 0.1]);
-title('Min-Max Cut Value over Time', 'FontSize', 14, 'FontWeight', 'bold');
-xlabel('Elapsed Time (s)', 'FontSize', 12);
-ylabel('Min-Max Cut Value', 'FontSize', 12);
-grid on; grid minor;
-set(gca, 'FontSize', 12);
-
-% Plot 3: Left Foot and Right Foot Force-Torque Data
-subplot(3, 2, 3);
-plot(elapsed_time_sec, LF_FT(:, 1), '-b', 'LineWidth', 1.2, 'MarkerIndices', 1:200:length(LF_FT)); hold on;
-plot(elapsed_time_sec, RF_FT(:, 1), '-r', 'LineWidth', 1.2, 'MarkerIndices', 1:200:length(RF_FT));
-title('Left vs Right Foot Force-Torque Data (X-axis)', 'FontSize', 14, 'FontWeight', 'bold');
-xlabel('Elapsed Time (s)', 'FontSize', 12);
-ylabel('Force (N)', 'FontSize', 12);
-legend({'Left Foot (LF)', 'Right Foot (RF)'}, 'FontSize', 10, 'Location', 'best');
-grid on; grid minor;
-set(gca, 'FontSize', 12);
-
-% Plot 4: Compensated Force-Torque Data
-subplot(3, 2, 4);
-plot(elapsed_time_sec, LF_CF_FT(:, 1), '-g', 'LineWidth', 1.2, 'MarkerIndices', 1:200:length(LF_CF_FT)); hold on;
-plot(elapsed_time_sec, RF_CF_FT(:, 1), '-m', 'LineWidth', 1.2, 'MarkerIndices', 1:200:length(RF_CF_FT));
-title('Compensated Force-Torque (LF vs RF) - X-axis', 'FontSize', 14, 'FontWeight', 'bold');
-xlabel('Elapsed Time (s)', 'FontSize', 12);
-ylabel('Compensated Force (N)', 'FontSize', 12);
-legend({'Compensated LF', 'Compensated RF'}, 'FontSize', 10, 'Location', 'best');
-grid on; grid minor;
-set(gca, 'FontSize', 12);
-
-% Plot 5: Desired Torque
-subplot(3, 2, 5);
-plot(elapsed_time_sec, torque_desired(:, 1), '-b', 'LineWidth', 1.2, 'MarkerIndices', 1:200:length(torque_desired));
-title('Desired Torque over Time', 'FontSize', 14, 'FontWeight', 'bold');
-xlabel('Elapsed Time (s)', 'FontSize', 12);
-ylabel('Torque (Nm)', 'FontSize', 12);
-grid on; grid minor;
-set(gca, 'FontSize', 12);
-
-% Plot 6: Joint Position Noise
-subplot(3, 2, 6);
-plot(elapsed_time_sec, q_noise(:, 1), '-c', 'LineWidth', 1.2, 'MarkerIndices', 1:200:length(q_noise));
-title('Joint Position Noise (First Joint) over Time', 'FontSize', 14, 'FontWeight', 'bold');
-xlabel('Elapsed Time (s)', 'FontSize', 12);
-ylabel('Noise', 'FontSize', 12);
-grid on; grid minor;
-set(gca, 'FontSize', 12);
-
-% Plot 7: Low-pass Filtered Joint Velocities (Single Joint)
-figure;
-plot(elapsed_time_sec, q_dot_lpf(:, 1), '-k', 'LineWidth', 1.5, 'MarkerIndices', 1:200:length(q_dot_lpf));
-title('Low-pass Filtered Joint Velocities over Time (Single Joint)', 'FontSize', 14, 'FontWeight', 'bold');
-xlabel('Elapsed Time (s)', 'FontSize', 12);
-ylabel('Velocity (rad/s)', 'FontSize', 12);
-grid on; grid minor;
-set(gca, 'FontSize', 12);
-
-% Plot 8: Virtual Joint Velocities
-figure;
-plot(elapsed_time_sec, q_dot_virtual(:, 1), '-m', 'LineWidth', 1.2, 'MarkerIndices', 1:200:length(q_dot_virtual));
-title('Virtual Joint Velocities over Time (First Joint)', 'FontSize', 14, 'FontWeight', 'bold');
-xlabel('Elapsed Time (s)', 'FontSize', 12);
-ylabel('Virtual Joint Velocity (m/s)', 'FontSize', 12);
-grid on; grid minor;
-set(gca, 'FontSize', 12);
-
-% Plot 9: Virtual Joint Positions
-figure;
-plot(elapsed_time_sec, q_virtual(:, 1), '-g', 'LineWidth', 1.2, 'MarkerIndices', 1:200:length(q_virtual));
-title('Virtual Joint Positions over Time (First Joint)', 'FontSize', 14, 'FontWeight', 'bold');
-xlabel('Elapsed Time (s)', 'FontSize', 12);
-ylabel('Joint Position (m)', 'FontSize', 12);
-grid on; grid minor;
-set(gca, 'FontSize', 12);
-
-% Plot 10: Reward over Time
-figure;
-plot(elapsed_time_sec, reward, '-r', 'LineWidth', 1.5, 'MarkerIndices', 1:200:length(reward));
-title('Reward Value over Time', 'FontSize', 14, 'FontWeight', 'bold');
-xlabel('Elapsed Time (s)', 'FontSize', 12);
-ylabel('Reward', 'FontSize', 12);
-grid on; grid minor;
-set(gca, 'FontSize', 12);
-
-% Calculate and display the mean value of the reward
-mean_reward = mean(reward);
-
-% Display the mean value on the command window
-fprintf('Mean Value of Reward: %.4f\n', mean_reward);
-
-% Display the mean value on the plot as text
-hold on;
-text(elapsed_time_sec(end) * 0.5, max(reward) * 0.85, ['Mean Reward: ', num2str(mean_reward, '%.4f')], 'FontSize', 14, 'Color', 'b', 'FontWeight', 'bold');
-
-% Display the accumulated reward at 32 seconds on the plot
-text(32, max(reward) * 0.75, ['Accumulated Reward @ 32s: ', num2str(accumulated_reward_32, '%.4f')], 'FontSize', 14, 'Color', 'k', 'FontWeight', 'bold');

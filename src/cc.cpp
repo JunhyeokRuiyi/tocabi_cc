@@ -746,7 +746,9 @@ void CustomController::computeSlow() //rui main
                     writeFile << rd_cc_.q_dot_virtual_.transpose() << "\t";
                     writeFile << rd_cc_.q_virtual_.transpose() << "\t";
 
-                    writeFile << value_ << "\t" << stop_by_value_thres_ <<"\t" << reward;
+                    writeFile << value_ << "\t";
+                    writeFile << stop_by_value_thres_ <<"\t" ;
+                    writeFile << reward ;
                     
                     writeFile << std::endl;
                     

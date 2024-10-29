@@ -18,47 +18,47 @@ for i=13:33
 end
 
 %%
-clear all
-d3 = load('./iserdata/data_nodelay.csv');
+clc; clearvars;
+% d3 = load('./iserdata/data_nodelay.csv');
+% 
+% figure();
+% % observation 62.5Hz
+% plot(d3(2000:3000,1),d3(2000:3000,6))
+% hold on
+% plot(d3(2000:3000,1),d3(2000:3000,12))
+% 
+% d4 = load('./iserdata/data_orig.csv');
+% 
+% figure();
+% % observation 2000Hz
+% plot(d4(2000:3000,1),d4(2000:3000,6))
+% hold on
+% plot(d4(2000:3000,1),d4(2000:3000,12))
+% 
+% d5 = load('./iserdata/data_nodelay_w_buffer.csv');
+% 
+% figure();
+% % observation 2000Hz with buffer
+% plot(d5(2000:3000,1),d5(2000:3000,6))
+% hold on
+% plot(d5(2000:3000,1),d5(2000:3000,12))
 
-figure();
-% observation 62.5Hz
-plot(d3(1:2000,1),d3(1:2000,6))
-hold on
-plot(d3(1:2000,1),d3(1:2000,12))
 
-d4 = load('./iserdata/data_orig.csv');
-
-figure();
-% observation 2000Hz
-plot(d4(1:2000,1),d4(1:2000,6))
-hold on
-plot(d4(1:2000,1),d4(1:2000,12))
-
-d5 = load('./iserdata/data_nodelay_w_buffer.csv');
-
-figure();
-% observation 2000Hz with buffer
-plot(d5(1:2000,1),d5(1:2000,6))
-hold on
-plot(d5(1:2000,1),d5(1:2000,12))
-
-
-d6 = load('./iserdata/data_nodelay_w_buffer_action_dt_accumulate_.csv');
+d6 = load('./iserdata/data_orig.csv');
 % observation 2000Hz with buffer + action_dt_accumulate_ EDIT
 figure();
 % observation 2000Hz with buffer
-plot(d6(1:2000,1),d6(1:2000,6))
+plot(d6(2000:3000,1),d6(2000:3000,6))
 hold on
-plot(d6(1:2000,1),d6(1:2000,12))
+plot(d6(2000:3000,1),d6(2000:3000,12))
 
-d7 = load('./iserdata/data_nodelay_w_buffer_action_only.csv');
+d7 = load('./iserdata/data_3.csv');
 % observation 2000Hz with buffer + action_dt_accumulate_ EDIT
 figure();
 % observation 2000Hz with buffer
-plot(d7(1:2000,1),d6(1:2000,6))
+plot(d7(2000:3000,1),d7(2000:3000,6))
 hold on
-plot(d7(1:2000,1),d7(1:2000,12))
+plot(d7(2000:3000,1),d7(2000:3000,12))
 
 
 %% Value Function
@@ -77,7 +77,7 @@ plot(d7(1:2000,1),d7(1:2000,12))
 % 127-165                writeFile << rd_cc_.q_dot_virtual_.transpose() << "\t";
 % 166-205                writeFile << rd_cc_.q_virtual_.transpose() << "\t";
 
-% 206 207                writeFile << value_ << "\t" << stop_by_value_thres_;
+% 206 207  208              writeFile << value_ << "\t" << stop_by_value_thres_ << reward;
 clear d
 d = load('data.csv');
 
@@ -122,5 +122,145 @@ plot(d2(1:1000,1),d2(1:1000,6))
 plot(d2(1:1000,1),d2(1:1000,12))
 
 %%
-del_tau = d(2:end,28:39) - d(1:end-1,28:39);
-mean(abs(del_tau))
+clc; clearvars;
+
+% Read the CSV file
+filename = 'data_250.csv';
+data = readmatrix(filename);
+
+% Extracting columns from the data
+% 1. Inference Step Time Difference (Column 1)
+time_diff = data(:, 1);
+
+% Create a cumulative time series from the differences
+time = cumsum(time_diff); % Now, 'time' can be used as the x-axis
+
+% 2. Phase (Column 2)
+phase = data(:, 2);
+
+% 3. RL Action (Column 3)
+rl_action = data(:, 3);
+
+% 4-9. LF_FT (Columns 4-9)
+LF_FT = data(:, 4:9);
+
+% 10-15. RF_FT (Columns 10-15)
+RF_FT = data(:, 10:15);
+
+% 16-21. LF_CF_FT (Columns 16-21)
+LF_CF_FT = data(:, 16:21);
+
+% 22-27. RF_CF_FT (Columns 22-27)
+RF_CF_FT = data(:, 22:27);
+
+% 28-60. Torque Desired (Columns 28-60)
+torque_desired = data(:, 28:60);
+
+% 61-93. q_noise (Columns 61-93)
+q_noise = data(:, 61:93);
+
+% 94-126. q_dot_lpf (Columns 94-126)
+q_dot_lpf = data(:, 94:126);
+
+% 127-165. q_dot_virtual (Columns 127-165)
+q_dot_virtual = data(:, 127:165);
+
+% 166-205. q_virtual (Columns 166-205)
+q_virtual = data(:, 166:205);
+
+% 206-208. Value, stop_by_value_thres, reward (Columns 206-208)
+value = data(:, 206);
+stop_by_value_thres = data(:, 207);
+reward = data(:, 208);
+
+% Enhanced Plotting
+% % Plot 1: Time vs Phase
+% figure('Name', 'Time vs Phase', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+% plot(time, phase, 'Color', [0.1, 0.4, 0.8], 'LineWidth', 2);
+% xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+% ylabel('Phase', 'FontWeight', 'bold', 'FontSize', 12);
+% title('Time vs Phase', 'FontWeight', 'bold', 'FontSize', 14);
+% grid on;
+% set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+% 
+% % Plot 2: Time vs RL Action
+% figure('Name', 'Time vs RL Action', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+% plot(time, rl_action, 'Color', [0.85, 0.1, 0.1], 'LineWidth', 2);
+% xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+% ylabel('RL Action', 'FontWeight', 'bold', 'FontSize', 12);
+% title('Time vs RL Action', 'FontWeight', 'bold', 'FontSize', 14);
+% grid on;
+% set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+
+% % Plot 4: LF_FT and RF_FT with Subplots
+% figure('Name', 'Time vs LF_FT and RF_FT', 'NumberTitle', 'off', 'Position', [100, 100, 1000, 800]);
+% subplot(2, 1, 1);
+% plot(time, LF_FT, 'LineWidth', 1.5);
+% xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+% ylabel('LF_FT', 'FontWeight', 'bold', 'FontSize', 12);
+% title('Time vs LF_FT', 'FontWeight', 'bold', 'FontSize', 14);
+% legend('LF_FT_1', 'LF_FT_2', 'LF_FT_3', 'LF_FT_4', 'LF_FT_5', 'LF_FT_6', 'Location', 'northeastoutside');
+% grid on;
+% set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+% 
+% subplot(2, 1, 2);
+% plot(time, RF_FT, 'LineWidth', 1.5);
+% xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+% ylabel('RF_FT', 'FontWeight', 'bold', 'FontSize', 12);
+% title('Time vs RF_FT', 'FontWeight', 'bold', 'FontSize', 14);
+% legend('RF_FT_1', 'RF_FT_2', 'RF_FT_3', 'RF_FT_4', 'RF_FT_5', 'RF_FT_6', 'Location', 'northeastoutside');
+% grid on;
+% set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+
+% Calculate accumulated reward until 32 seconds
+time_limit_idx = find(time <= 32, 1, 'last');
+if ~isempty(time_limit_idx) && time_limit_idx > 1
+    accumulated_reward = cumsum(reward(1:time_limit_idx));
+
+    % Plot Accumulated Reward Until 32 Seconds
+    figure('Name', 'Accumulated Reward Until 32 Seconds', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+    plot(time(1:time_limit_idx), accumulated_reward, 'Color', [0.1, 0.7, 0.2], 'LineWidth', 2);
+    xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+    ylabel('Accumulated Reward', 'FontWeight', 'bold', 'FontSize', 12);
+    title('Accumulated Reward Until 32 Seconds', 'FontWeight', 'bold', 'FontSize', 14);
+    grid on;
+    set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+else
+    disp('Time limit index for 32 seconds not found or insufficient data points.');
+end
+
+% Calculate average reward over time
+if ~isempty(reward) && length(reward) > 1
+    average_reward = cumsum(reward) ./ (1:length(reward))';
+
+    % Plot Average Reward Over Time
+    figure('Name', 'Average Reward Over Time', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+    plot(time, average_reward, 'Color', [0.2, 0.5, 0.9], 'LineWidth', 2);
+    xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+    ylabel('Average Reward', 'FontWeight', 'bold', 'FontSize', 12);
+    title('Average Reward Over Time', 'FontWeight', 'bold', 'FontSize', 14);
+    grid on;
+    set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+else
+    disp('No valid reward data available for calculating average reward.');
+end
+
+% 2. **Control Effort vs. Time**: Sum of squared torque desired over time
+control_effort = sum(torque_desired .^ 2, 2);
+figure('Name', 'Control Effort Over Time', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+plot(time, control_effort, 'Color', [0.7, 0.3, 0.8], 'LineWidth', 2);
+xlabel('Time (s)', 'FontWeight', 'bold', 'FontSize', 12);
+ylabel('Control Effort (Sum of Squared Torque)', 'FontWeight', 'bold', 'FontSize', 12);
+title('Control Effort Over Time', 'FontWeight', 'bold', 'FontSize', 14);
+grid on;
+set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+
+% 3. **Reward vs. Control Effort**: Scatter plot showing reward obtained for given control effort
+figure('Name', 'Reward vs Control Effort', 'NumberTitle', 'off', 'Position', [100, 100, 800, 600]);
+scatter(control_effort, reward, 20, 'filled', 'MarkerEdgeColor', [0, 0.5, 0.5], 'MarkerFaceColor', [0, 0.7, 0.7]);
+xlabel('Control Effort (Sum of Squared Torque)', 'FontWeight', 'bold', 'FontSize', 12);
+ylabel('Reward', 'FontWeight', 'bold', 'FontSize', 12);
+title('Reward vs Control Effort', 'FontWeight', 'bold', 'FontSize', 14);
+grid on;
+set(gca, 'GridAlpha', 0.3, 'FontSize', 12);
+
