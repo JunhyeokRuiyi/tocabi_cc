@@ -5,6 +5,8 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
+#include <std_msgs/Float32MultiArray.h>
+
 
 class CustomController
 {
@@ -29,6 +31,7 @@ public:
     void processObservation2();
     void feedforwardPolicy();
     void initVariable();
+    double computeReward();
     Eigen::Vector3d mat2euler(Eigen::Matrix3d mat);
 
     static const int num_action = 13;
@@ -115,16 +118,29 @@ public:
 
     void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
     ros::Subscriber joy_sub_;
+    ros::Publisher mujoco_ext_force_apply_pub;
+    std_msgs::Float32MultiArray mujoco_applied_ext_force_; // 6 ext wrench + 1 link idx
+
+
+    double ext_force_x_;
+    double ext_force_y_;
+    double param_ext_force_time_;
 
     double target_vel_x_ = 0.0;
     double target_vel_x_yaml = 0.0;
     double target_vel_y_ = 0.0;
+    
+    Eigen::MatrixXd mocap_data;
+    Eigen::Vector6d LF_FT_pre_;
+    Eigen::Vector6d RF_FT_pre_;
+    Eigen::MatrixXd rl_action_pre_;
+    Eigen::Matrix<double, MODEL_DOF, 1> q_vel_noise_pre_;
 
-    float freq_scaler_ = 1/125;
+    float freq_scaler_ = 1/125.0;
     float freq_tester_2000HZ = 1/2000.0;
     int action_delay = 1;
     int observation_delay = 1;
-    int frameskip_custom = 16;//rui frameskip 250Hz -> 8, 200Hz -> 10, 150Hz -> 13, 125Hz -> 16, 100Hz -> 20, 62.5Hz -> 32, 50Hz -> 40, 40Hz -> 50 size
+    int frameskip_custom = 8;//rui frameskip 250Hz -> 8, 200Hz -> 10, 150Hz -> 13, 125Hz -> 16, 100Hz -> 20, 62.5Hz -> 32, 50Hz -> 40, 40Hz -> 50 size
     bool just_after_init = true;
     int action_buffer_length = 0;
     std::string data_path;
@@ -133,4 +149,6 @@ public:
 
 private:
     Eigen::VectorQd ControlVal_;
+    unsigned int walking_tick_mj = 0;
+    const double hz_ = 2000.0;  
 };
