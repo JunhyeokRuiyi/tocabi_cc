@@ -58,8 +58,14 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
     }
     initVariable();
     loadNetwork();
+    
+    ros::param::get("/tocabi_controller/ext_time",param_ext_force_time_);
+    ros::param::get("/tocabi_controller/extforce_x",ext_force_x_);
+    ros::param::get("/tocabi_controller/extforce_y",ext_force_y_);
 
     joy_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 10, &CustomController::joyCallback, this);
+    mujoco_ext_force_apply_pub = nh_.advertise<std_msgs::Float32MultiArray>("/tocabi_avatar/applied_ext_force", 10);
+    mujoco_applied_ext_force_.data.resize(7);
 }
 
 Eigen::VectorQd CustomController::getControl()
@@ -94,7 +100,7 @@ void CustomController::loadNetwork() //rui weight 불러오기 weight TocabiRL �
     file[11].open(cur_path+"weight/mlp_extractor_value_net_2_bias.txt", std::ios::in);
     file[12].open(cur_path+"weight/value_net_weight.txt", std::ios::in);
     file[13].open(cur_path+"weight/value_net_bias.txt", std::ios::in);
-    file[14].open(cur_path+"processed_data_tocabi_walk.txt", std::ios::in);
+    // file[14].open(cur_path+"processed_data_tocabi_walk.txt", std::ios::in);
 
 
     if(!file[0].is_open())
@@ -328,22 +334,22 @@ void CustomController::loadNetwork() //rui weight 불러오기 weight TocabiRL �
             }
         }
     }
-    row = 0;
-    col = 0;
-    while(!file[14].eof() && row != mocap_data.rows())
-    {
-        file[14] >> temp;
-        if(temp != '\n')
-        {
-            mocap_data(row, col) = temp;
-            col ++;
-            if (col == mocap_data.cols())
-            {
-                col = 0;
-                row ++;
-            }
-        }
-    }
+    // row = 0;
+    // col = 0;
+    // while(!file[14].eof() && row != mocap_data.rows())
+    // {
+    //     file[14] >> temp;
+    //     if(temp != '\n')
+    //     {
+    //         mocap_data(row, col) = temp;
+    //         col ++;
+    //         if (col == mocap_data.cols())
+    //         {
+    //             col = 0;
+    //             row ++;
+    //         }
+    //     }
+    // }
 }
 
 void CustomController::initVariable() //rui 변수 초기화
@@ -360,7 +366,7 @@ void CustomController::initVariable() //rui 변수 초기화
     rl_action_.resize(num_action, 1);
     rl_action_2000_.resize(num_action, 1);
     rl_action_pre_.resize(num_action, 1);
-    mocap_data.resize(3600,36);
+    // mocap_data.resize(3600,36);
 
     value_net_w0_.resize(num_hidden, num_state);
     value_net_b0_.resize(num_hidden, 1);
@@ -727,7 +733,7 @@ void CustomController::computeSlow() //rui main
             // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_);
             if (is_write_file_) //rui 파일 write
             {       
-                    double reward = computeReward();
+                    // double reward = computeReward();
                     writeFile << (rd_cc_.control_time_us_ - time_inference_pre_)/1e6 << "\t";
                     writeFile << phase_ << "\t";
                     // writeFile << DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_) << "\t";
@@ -748,7 +754,7 @@ void CustomController::computeSlow() //rui main
 
                     writeFile << value_ << "\t";
                     writeFile << stop_by_value_thres_ <<"\t" ;
-                    writeFile << reward ;
+                    // writeFile << reward ;
                     
                     writeFile << std::endl;
                     
@@ -832,6 +838,35 @@ void CustomController::computeSlow() //rui main
             rd_.torque_desired = kp_ * (q_stop_ - q_noise_) - kv_*q_vel_noise_;
         }
 
+        walking_tick_mj++;
+        if((walking_tick_mj >= param_ext_force_time_*hz_)  && (walking_tick_mj < (param_ext_force_time_ + 0.2)*hz_))
+        //if((current_step_num_ == 6 && (walking_tick_mj >= t_start_ + t_total_ - 0.1*hz_)) || ((current_step_num_ == 7)  && (walking_tick_mj < t_start_ + 0.1*hz_)))
+        { 
+            std::cout << "ext_force x : " << ext_force_x_ <<  std::endl;
+            std::cout << "ext_force y : " << ext_force_y_ <<  std::endl;
+            mujoco_applied_ext_force_.data[0] = ext_force_x_;
+            mujoco_applied_ext_force_.data[1] = ext_force_y_;
+            mujoco_applied_ext_force_.data[2] =  0.0; //z-axis linear force
+            mujoco_applied_ext_force_.data[3] =  0.0; //x-axis angular moment
+            mujoco_applied_ext_force_.data[4] =  0.0; //y-axis angular moment
+            mujoco_applied_ext_force_.data[5] =  0.0; //z-axis angular moment
+
+            mujoco_applied_ext_force_.data[6] = 1; //link idx; 1:pelvis
+
+            mujoco_ext_force_apply_pub.publish(mujoco_applied_ext_force_);                    
+        } 
+        else
+        {
+            mujoco_applied_ext_force_.data[0] = 0; //x-axis linear force
+            mujoco_applied_ext_force_.data[1] = 0; //y-axis linear force
+            mujoco_applied_ext_force_.data[2] = 0; //z-axis linear force
+            mujoco_applied_ext_force_.data[3] = 0; //x-axis angular moment
+            mujoco_applied_ext_force_.data[4] = 0; //y-axis angular moment
+            mujoco_applied_ext_force_.data[5] = 0; //z-axis angular moment
+            mujoco_applied_ext_force_.data[6] = 1; //link idx; 1:pelvis
+
+            mujoco_ext_force_apply_pub.publish(mujoco_applied_ext_force_);
+        }
 
     }
 }
@@ -855,92 +890,92 @@ void CustomController::copyRobotData(RobotData &rd_l)
     std::memcpy(&rd_cc_, &rd_l, sizeof(RobotData));
 }
 
-double CustomController::computeReward()
-{
-    Eigen::Quaterniond quat_cur;
-    quat_cur.x() = rd_cc_.q_virtual_(3);
-    quat_cur.y() = rd_cc_.q_virtual_(4);
-    quat_cur.z() = rd_cc_.q_virtual_(5);
-    quat_cur.w() = rd_cc_.q_virtual_(MODEL_DOF_QVIRTUAL-1);    
-    double angle = quat_cur.angularDistance(Eigen::Quaterniond::Identity()) * 2;
-    double mimic_body_orientation_reward = 0.3 * std::exp(-13.2 * std::abs(angle)); 
+// double CustomController::computeReward()
+// {
+//     Eigen::Quaterniond quat_cur;
+//     quat_cur.x() = rd_cc_.q_virtual_(3);
+//     quat_cur.y() = rd_cc_.q_virtual_(4);
+//     quat_cur.z() = rd_cc_.q_virtual_(5);
+//     quat_cur.w() = rd_cc_.q_virtual_(MODEL_DOF_QVIRTUAL-1);    
+//     double angle = quat_cur.angularDistance(Eigen::Quaterniond::Identity()) * 2;
+//     double mimic_body_orientation_reward = 0.3 * std::exp(-13.2 * std::abs(angle)); 
 
     
-    Eigen::Matrix<double, MODEL_DOF, 1> joint_position_target;
-    Eigen::Matrix<double, 2, 1> force_target;
-    double cur_time = std::fmod((rd_cc_.control_time_us_-start_time_)/1e6 + action_dt_accumulate_, 1.7995);
-    int mocap_data_idx = int(cur_time / 0.0005) % 3600;
-    int next_idx = mocap_data_idx + 1;
-    for (int i = 0; i <MODEL_DOF; i++)
-    {
-        joint_position_target(i) = DyrosMath::cubic(cur_time, mocap_data(mocap_data_idx,0), mocap_data(next_idx,0), 
-                                        mocap_data(mocap_data_idx,i+1), mocap_data(next_idx,i+1), 0.0, 0.0);
-    }
-    for (int i = 0; i < 2; i++)
-    {
-        force_target(i) = DyrosMath::cubic(cur_time, mocap_data(mocap_data_idx,0), mocap_data(next_idx,0), 
-                                        mocap_data(mocap_data_idx,i+33), mocap_data(next_idx,i+33), 0.0, 0.0);
-    }
-    double qpos_regulation = 0.35 * std::exp(-2.0 * pow((joint_position_target - q_noise_).norm(),2));
-    double qvel_regulation = 0.05 * std::exp(-0.01 * pow((q_vel_noise_).norm(),2));
+//     Eigen::Matrix<double, MODEL_DOF, 1> joint_position_target;
+//     Eigen::Matrix<double, 2, 1> force_target;
+//     double cur_time = std::fmod((rd_cc_.control_time_us_-start_time_)/1e6 + action_dt_accumulate_, 1.7995);
+//     int mocap_data_idx = int(cur_time / 0.0005) % 3600;
+//     int next_idx = mocap_data_idx + 1;
+//     for (int i = 0; i <MODEL_DOF; i++)
+//     {
+//         joint_position_target(i) = DyrosMath::cubic(cur_time, mocap_data(mocap_data_idx,0), mocap_data(next_idx,0), 
+//                                         mocap_data(mocap_data_idx,i+1), mocap_data(next_idx,i+1), 0.0, 0.0);
+//     }
+//     for (int i = 0; i < 2; i++)
+//     {
+//         force_target(i) = DyrosMath::cubic(cur_time, mocap_data(mocap_data_idx,0), mocap_data(next_idx,0), 
+//                                         mocap_data(mocap_data_idx,i+33), mocap_data(next_idx,i+33), 0.0, 0.0);
+//     }
+//     double qpos_regulation = 0.35 * std::exp(-2.0 * pow((joint_position_target - q_noise_).norm(),2));
+//     double qvel_regulation = 0.05 * std::exp(-0.01 * pow((q_vel_noise_).norm(),2));
 
-    double contact_force_diff_regulation = 0.2 * std::exp(-0.01/250.0*(((rd_cc_.LF_FT-LF_FT_pre_)*(2000.0/frameskip_custom)).norm() + ((rd_cc_.RF_FT-LF_FT_pre_)*(2000.0/frameskip_custom)).norm()));
-    std::cout << "2000.0/frameskip_custom : " << 2000.0/frameskip_custom << " " << typeid(2000.0/frameskip_custom).name()<< std::endl;
-    double torque_regulation = 0.05 * std::exp(-0.01 * (rl_action_.block(0,0,12,1)*333).norm());
-    double torque_diff_regulation = 0.6 * std::exp(-0.01/250.0* ((rl_action_.block(0,0,12,1)-rl_action_pre_.block(0,0,12,1))*(2000.0/frameskip_custom)*333).norm());
-    double qacc_regulation = 0.05 * std::exp(-20.0*pow((q_vel_noise_-q_vel_noise_pre_).norm(),2));
-    Eigen::Vector2d target_vel;
-    Eigen::Vector2d cur_vel;
-    target_vel << 0.4, 0.0;
-    cur_vel << rd_cc_.q_dot_virtual_(0), rd_cc_.q_dot_virtual_(1);
-    double body_vel_reward = 0.3 * std::exp(-3.0 * pow((target_vel - cur_vel).norm(),2));
+//     double contact_force_diff_regulation = 0.2 * std::exp(-0.01/250.0*(((rd_cc_.LF_FT-LF_FT_pre_)*(2000.0/frameskip_custom)).norm() + ((rd_cc_.RF_FT-LF_FT_pre_)*(2000.0/frameskip_custom)).norm()));
+//     // std::cout << "2000.0/frameskip_custom : " << 2000.0/frameskip_custom << " " << typeid(2000.0/frameskip_custom).name()<< std::endl;
+//     double torque_regulation = 0.05 * std::exp(-0.01 * (rl_action_.block(0,0,12,1)*333).norm());
+//     double torque_diff_regulation = 0.6 * std::exp(-0.01/250.0* ((rl_action_.block(0,0,12,1)-rl_action_pre_.block(0,0,12,1))*(2000.0/frameskip_custom)*333).norm());
+//     double qacc_regulation = 0.05 * std::exp(-20.0*pow((q_vel_noise_-q_vel_noise_pre_).norm(),2));
+//     Eigen::Vector2d target_vel;
+//     Eigen::Vector2d cur_vel;
+//     target_vel << 0.4, 0.0;
+//     cur_vel << rd_cc_.q_dot_virtual_(0), rd_cc_.q_dot_virtual_(1);
+//     double body_vel_reward = 0.3 * std::exp(-3.0 * pow((target_vel - cur_vel).norm(),2));
     
-    double foot_contact_reward = 0.0;
-    if ((3300 <= mocap_data_idx) & (mocap_data_idx < 3600) || (mocap_data_idx < 300) || ((1500 <= mocap_data_idx) & ( mocap_data_idx < 2100)))
-    {
-        if (abs(rd_cc_.LF_FT(2)) > 100 && abs(rd_cc_.RF_FT(2)) > 100)
-            foot_contact_reward = 0.2;
-    }
-    else if ((300 <= mocap_data_idx) & (mocap_data_idx < 1500))
-    {
-        if (abs(rd_cc_.LF_FT(2)) < 100 && abs(rd_cc_.RF_FT(2)) > 100)
-            foot_contact_reward = 0.2;
-    }    
-    else if ((2100 <= mocap_data_idx) & (mocap_data_idx < 3300))
-    {
-        if (abs(rd_cc_.LF_FT(2)) > 100 && abs(rd_cc_.RF_FT(2)) < 100)
-            foot_contact_reward = 0.2;
-    }
+//     double foot_contact_reward = 0.0;
+//     if ((3300 <= mocap_data_idx) & (mocap_data_idx < 3600) || (mocap_data_idx < 300) || ((1500 <= mocap_data_idx) & ( mocap_data_idx < 2100)))
+//     {
+//         if (abs(rd_cc_.LF_FT(2)) > 100 && abs(rd_cc_.RF_FT(2)) > 100)
+//             foot_contact_reward = 0.2;
+//     }
+//     else if ((300 <= mocap_data_idx) & (mocap_data_idx < 1500))
+//     {
+//         if (abs(rd_cc_.LF_FT(2)) < 100 && abs(rd_cc_.RF_FT(2)) > 100)
+//             foot_contact_reward = 0.2;
+//     }    
+//     else if ((2100 <= mocap_data_idx) & (mocap_data_idx < 3300))
+//     {
+//         if (abs(rd_cc_.LF_FT(2)) > 100 && abs(rd_cc_.RF_FT(2)) < 100)
+//             foot_contact_reward = 0.2;
+//     }
 
-    double force_thres_penalty = 0.0;
-    if (abs(rd_cc_.LF_FT(2)) > 1.4*9.81*100 || abs(rd_cc_.RF_FT(2)) > 1.4*9.81*100)
-    {
-        force_thres_penalty = -0.2;
-    }
-    double contact_force_penalty = 0.1;
-    if (abs(rd_cc_.LF_FT(2)) > 1.4*9.81*100 || abs(rd_cc_.RF_FT(2)) > 1.4*9.81*100)
-    {
-        contact_force_penalty = 0.1*(1-std::exp(-0.007*((min(abs(rd_cc_.LF_FT(2)) - 1.4*9.81*100, 0.0)) \
-                                                            + (min(abs(rd_cc_.RF_FT(2)) - 1.4*9.81*100, 0.0)))));
-    }
-    double force_diff_thres_penalty = 0.0;
-    if (abs(rd_cc_.LF_FT(2)-LF_FT_pre_(2)) > 0.2*9.81*100 || abs(rd_cc_.RF_FT(2)-RF_FT_pre_(2)) > 1.4*9.81*100)
-    {
-        force_diff_thres_penalty = -0.05;
-    }
-    double force_ref_reward = 0.1*std::exp(-0.001*(abs(rd_cc_.LF_FT(2)+force_target(0)))) + 0.1*std::exp(-0.001*(abs(rd_cc_.RF_FT(2)+force_target(1))));
+//     double force_thres_penalty = 0.0;
+//     if (abs(rd_cc_.LF_FT(2)) > 1.4*9.81*100 || abs(rd_cc_.RF_FT(2)) > 1.4*9.81*100)
+//     {
+//         force_thres_penalty = -0.2;
+//     }
+//     double contact_force_penalty = 0.1;
+//     if (abs(rd_cc_.LF_FT(2)) > 1.4*9.81*100 || abs(rd_cc_.RF_FT(2)) > 1.4*9.81*100)
+//     {
+//         contact_force_penalty = 0.1*(1-std::exp(-0.007*((min(abs(rd_cc_.LF_FT(2)) - 1.4*9.81*100, 0.0)) \
+//                                                             + (min(abs(rd_cc_.RF_FT(2)) - 1.4*9.81*100, 0.0)))));
+//     }
+//     double force_diff_thres_penalty = 0.0;
+//     if (abs(rd_cc_.LF_FT(2)-LF_FT_pre_(2)) > 0.2*9.81*100 || abs(rd_cc_.RF_FT(2)-RF_FT_pre_(2)) > 1.4*9.81*100)
+//     {
+//         force_diff_thres_penalty = -0.05;
+//     }
+//     double force_ref_reward = 0.1*std::exp(-0.001*(abs(rd_cc_.LF_FT(2)+force_target(0)))) + 0.1*std::exp(-0.001*(abs(rd_cc_.RF_FT(2)+force_target(1))));
     
-    // LF_FT_pre_ = rd_cc_.LF_FT;
-    // RF_FT_pre_ = rd_cc_.RF_FT;
-    // rl_action_pre_ = rl_action_;
-    // q_vel_noise_pre_ = q_vel_noise_;
+//     // LF_FT_pre_ = rd_cc_.LF_FT;
+//     // RF_FT_pre_ = rd_cc_.RF_FT;
+//     // rl_action_pre_ = rl_action_;
+//     // q_vel_noise_pre_ = q_vel_noise_;
 
-    double total_reward = mimic_body_orientation_reward + qpos_regulation + qvel_regulation + contact_force_penalty + 
-        torque_regulation + torque_diff_regulation + body_vel_reward + qacc_regulation + foot_contact_reward + 
-        contact_force_diff_regulation  + force_thres_penalty + force_diff_thres_penalty + force_ref_reward;
+//     double total_reward = mimic_body_orientation_reward + qpos_regulation + qvel_regulation + contact_force_penalty + 
+//         torque_regulation + torque_diff_regulation + body_vel_reward + qacc_regulation + foot_contact_reward + 
+//         contact_force_diff_regulation  + force_thres_penalty + force_diff_thres_penalty + force_ref_reward;
 
-    return total_reward;
-}
+//     return total_reward;
+// }
 
 void CustomController::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
 {
