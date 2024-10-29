@@ -1,0 +1,23 @@
+# data_path_sim: "/home/dyros/tocabi_ws/src/tocabi_cc/result/data"
+# data_path_real: "/home/dyros/catkin_ws/tocabi_cc/result/data"
+
+# target_vel_x: 0.5
+# target_vel_y: 0.0
+
+# delay_action: 0
+# delay_observation: 0
+
+# frameskip: 4 # 4 500Hz frameskip * freq = 2000
+# freq_scaler: 0.002 # 0.004 for 250Hz, 0.002 for 500Hz 1/500Hz
+# vel_cubic_scaler: 1
+# is_on_robot: False
+# is_write_file: True
+# extforce_x: -300
+extforce_x: -300
+# extforce_y: -240 
+extforce_y: -0 
+
+
+# ext_time: 2.2 #x
+# ext_time: 1.8 #y
+ext_time: 2.2
