@@ -29,6 +29,7 @@ public:
     void processObservation2();
     void feedforwardPolicy();
     void initVariable();
+    double computeReward();
     Eigen::Vector3d mat2euler(Eigen::Matrix3d mat);
 
     static const int num_action = 13;
@@ -81,7 +82,7 @@ public:
     float phase_ = 0.0;
     float phase_2 = 0.0;
 
-    bool is_on_robot_ = true;
+    bool is_on_robot_ = false;
     bool is_write_file_ = true;
     Eigen::Matrix<double, MODEL_DOF, 1> q_dot_lpf_;
 
@@ -117,15 +118,23 @@ public:
     ros::Subscriber joy_sub_;
 
     double target_vel_x_ = 0.0;
+    double target_vel_x_yaml = 0.0;
     double target_vel_y_ = 0.0;
+    
+    Eigen::MatrixXd mocap_data;
+    Eigen::Vector6d LF_FT_pre_;
+    Eigen::Vector6d RF_FT_pre_;
+    Eigen::MatrixXd rl_action_pre_;
+    Eigen::Matrix<double, MODEL_DOF, 1> q_vel_noise_pre_;
 
-    float freq_scaler_ = 1/50;
+    float freq_scaler_ = 1/50.0;
     float freq_tester_2000HZ = 1/2000.0;
     int action_delay = 1;
     int observation_delay = 1;
     int frameskip_custom = 40;//rui frameskip 250Hz -> 8, 200Hz -> 10, 150Hz -> 13, 125Hz -> 16, 100Hz -> 20, 62.5Hz -> 32, 50Hz -> 40, 40Hz -> 50 size
     bool just_after_init = true;
     int action_buffer_length = 0;
+    std::string data_path;
     Eigen::MatrixXd rl_action_2000_; //rui
 
 

@@ -4,3 +4,9 @@ delay:
 frequnecy: 
   frameskip_custom: 32
   freq: 62.5
+
+target_vel:
+  x: 0.5
+result:
+  sim: /home/dyros/tocabi_ws/src/tocabi_cc/result/ijrrdata/data_50
+  real: /home/dyros/catkin_ws/data_

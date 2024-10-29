@@ -8,15 +8,51 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
 {
     ControlVal_.setZero();
 
+    if(is_on_robot_) {
+        try {
+            YAML::Node node = YAML::LoadFile("/home/dyros/catkin_ws/src/tocabi_cc/include/delay_config.yaml");
+            // auto delay = node["delay"];
+            auto data_path_ = node["result"]["real"].as<std::string>();
+            auto target_vel_x_yaml_ = node["target_vel"]["x"].as<double>();
+            target_vel_x_yaml = target_vel_x_yaml_;
+            data_path = data_path_;
+
+
+        }
+        catch(const YAML::BadFile& e) {
+            std::cerr << e.msg << std::endl;
+        }
+        catch (YAML::ParserException &e){
+            std::cerr << e.msg << std::endl;
+        }
+    }
+    else{
+        try {
+            YAML::Node node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/include/delay_config.yaml");
+            // auto delay = node["delay"];
+            auto data_path_ = node["result"]["sim"].as<std::string>();
+            auto target_vel_x_yaml_ = node["target_vel"]["x"].as<double>();
+            data_path = data_path_;
+            target_vel_x_yaml = target_vel_x_yaml_;
+
+        }
+        catch(const YAML::BadFile& e) {
+            std::cerr << e.msg << std::endl;
+        }
+        catch (YAML::ParserException &e){
+            std::cerr << e.msg << std::endl;
+        }
+    }
+
     if (is_write_file_)
     {
         if (is_on_robot_)
         {
-            writeFile.open("/home/dyros/catkin_ws/src/tocabi_cc/result/iserdata/data.csv", std::ofstream::out | std::ofstream::app);
+            writeFile.open(data_path, std::ofstream::out | std::ofstream::app);
         }
         else
         {
-            writeFile.open("/home/dyros/tocabi_ws/src/tocabi_cc/result/iserdata/data_0.csv", std::ofstream::out | std::ofstream::app);
+            writeFile.open(data_path, std::ofstream::out | std::ofstream::app);
         }
         writeFile << std::fixed << std::setprecision(8);
     }
@@ -58,6 +94,7 @@ void CustomController::loadNetwork() //rui weight 불러오기 weight TocabiRL �
     file[11].open(cur_path+"weight/mlp_extractor_value_net_2_bias.txt", std::ios::in);
     file[12].open(cur_path+"weight/value_net_weight.txt", std::ios::in);
     file[13].open(cur_path+"weight/value_net_bias.txt", std::ios::in);
+    file[14].open(cur_path+"processed_data_tocabi_walk.txt", std::ios::in);
 
 
     if(!file[0].is_open())
@@ -291,6 +328,22 @@ void CustomController::loadNetwork() //rui weight 불러오기 weight TocabiRL �
             }
         }
     }
+    row = 0;
+    col = 0;
+    while(!file[14].eof() && row != mocap_data.rows())
+    {
+        file[14] >> temp;
+        if(temp != '\n')
+        {
+            mocap_data(row, col) = temp;
+            col ++;
+            if (col == mocap_data.cols())
+            {
+                col = 0;
+                row ++;
+            }
+        }
+    }
 }
 
 void CustomController::initVariable() //rui 변수 초기화
@@ -306,6 +359,8 @@ void CustomController::initVariable() //rui 변수 초기화
     hidden_layer2_.resize(num_hidden, 1);
     rl_action_.resize(num_action, 1);
     rl_action_2000_.resize(num_action, 1);
+    rl_action_pre_.resize(num_action, 1);
+    mocap_data.resize(3600,36);
 
     value_net_w0_.resize(num_hidden, num_state);
     value_net_b0_.resize(num_hidden, 1);
@@ -464,8 +519,7 @@ void CustomController::processObservation() //rui observation 만들어주기
     data_idx++;
     state_cur_(data_idx) = cos(2*M_PI*phase_); //rui 1
     data_idx++;
-
-    state_cur_(data_idx) = 0.2;//target_vel_x_; //rui 1
+    state_cur_(data_idx) = target_vel_x_yaml;//target_vel_x_; //rui 1
     data_idx++;
 
     state_cur_(data_idx) = target_vel_y_; //rui 1
@@ -621,13 +675,13 @@ void CustomController::computeSlow() //rui main
         }
         else{
             try {
-            YAML::Node node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/include/delay_config.yaml");
-            // auto delay = node["delay"];
-            auto action_delay_ = node["delay"]["action"].as<int>();
-            auto observation_delay_ = node["delay"]["observation"].as<int>();
+                YAML::Node node = YAML::LoadFile("/home/dyros/tocabi_ws/src/tocabi_cc/include/delay_config.yaml");
+                // auto delay = node["delay"];
+                auto action_delay_ = node["delay"]["action"].as<int>();
+                auto observation_delay_ = node["delay"]["observation"].as<int>();
 
-            action_delay = action_delay_;
-            observation_delay = observation_delay_;
+                action_delay = action_delay_;
+                observation_delay = observation_delay_;
 
             }
             catch(const YAML::BadFile& e) {
@@ -639,7 +693,7 @@ void CustomController::computeSlow() //rui main
         }
         // //! 2000Hz
 
-        cout << "a " << action_delay << "o " << observation_delay << " " << endl;
+        // cout << "a " << action_delay << "o " << observation_delay << " " << endl;
         
         // //! 2000Hz obs delay
         // ** buffer size should be changed regarding to the policy frequency ** //
@@ -671,9 +725,42 @@ void CustomController::computeSlow() //rui main
             feedforwardPolicy();
 
             // action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_);
+            if (is_write_file_) //rui 파일 write
+            {       
+                    double reward = computeReward();
+                    writeFile << (rd_cc_.control_time_us_ - time_inference_pre_)/1e6 << "\t";
+                    writeFile << phase_ << "\t";
+                    // writeFile << DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_) << "\t";
+                    //! 2000Hz
+                    writeFile << DyrosMath::minmax_cut(rl_action_2000_(num_action-1)*freq_scaler_, 0.0, freq_scaler_) << "\t";
+                    //! 2000Hz
+
+                    writeFile << rd_cc_.LF_FT.transpose() << "\t";
+                    writeFile << rd_cc_.RF_FT.transpose() << "\t";
+                    writeFile << rd_cc_.LF_CF_FT.transpose() << "\t";
+                    writeFile << rd_cc_.RF_CF_FT.transpose() << "\t";
+
+                    writeFile << rd_cc_.torque_desired.transpose()  << "\t";
+                    writeFile << q_noise_.transpose() << "\t";
+                    writeFile << q_dot_lpf_.transpose() << "\t";
+                    writeFile << rd_cc_.q_dot_virtual_.transpose() << "\t";
+                    writeFile << rd_cc_.q_virtual_.transpose() << "\t";
+
+                    writeFile << value_ << "\t";
+                    writeFile << stop_by_value_thres_ <<"\t" ;
+                    writeFile << reward ;
+                    
+                    writeFile << std::endl;
+                    
+            }
             time_inference_pre_ = rd_cc_.control_time_us_;
 
         }
+        LF_FT_pre_ = rd_cc_.LF_FT;
+        RF_FT_pre_ = rd_cc_.RF_FT;
+        rl_action_pre_ = rl_action_;
+        q_vel_noise_pre_ = q_vel_noise_;
+
         action_dt_accumulate_ += DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_tester_2000HZ, 0.0, freq_tester_2000HZ); 
         // time_inputTorque_pre_ = rd_cc_.control_time_us_;
         // //! 2000Hz act delay
@@ -745,39 +832,6 @@ void CustomController::computeSlow() //rui main
             rd_.torque_desired = kp_ * (q_stop_ - q_noise_) - kv_*q_vel_noise_;
         }
 
-        if (is_write_file_) //rui 파일 write
-        {
-            if ((rd_cc_.control_time_us_ - time_write_pre_)/1e6 > 1/240.0)
-            {
-                writeFile << (rd_cc_.control_time_us_ - start_time_)/1e6 << "\t";
-                writeFile << phase_ << "\t";
-                // writeFile << DyrosMath::minmax_cut(rl_action_(num_action-1)*freq_scaler_, 0.0, freq_scaler_) << "\t";
-                //! 2000Hz
-                writeFile << DyrosMath::minmax_cut(rl_action_2000_(num_action-1)*freq_scaler_, 0.0, freq_scaler_) << "\t";
-                //! 2000Hz
-
-                writeFile << rd_cc_.LF_FT.transpose() << "\t";
-                writeFile << rd_cc_.RF_FT.transpose() << "\t";
-                writeFile << rd_cc_.LF_CF_FT.transpose() << "\t";
-                writeFile << rd_cc_.RF_CF_FT.transpose() << "\t";
-
-                writeFile << rd_cc_.torque_desired.transpose()  << "\t";
-                writeFile << q_noise_.transpose() << "\t";
-                writeFile << q_dot_lpf_.transpose() << "\t";
-                writeFile << rd_cc_.q_dot_virtual_.transpose() << "\t";
-                writeFile << rd_cc_.q_virtual_.transpose() << "\t";
-
-                writeFile << value_ << "\t" << stop_by_value_thres_;
-                
-                writeFile << std::endl;
-                
-                time_write_pre_ = rd_cc_.control_time_us_;
-
-                
-            }
-
-            
-        }
 
     }
 }
@@ -799,6 +853,93 @@ void CustomController::computePlanner()
 void CustomController::copyRobotData(RobotData &rd_l)
 {
     std::memcpy(&rd_cc_, &rd_l, sizeof(RobotData));
+}
+
+double CustomController::computeReward()
+{
+    Eigen::Quaterniond quat_cur;
+    quat_cur.x() = rd_cc_.q_virtual_(3);
+    quat_cur.y() = rd_cc_.q_virtual_(4);
+    quat_cur.z() = rd_cc_.q_virtual_(5);
+    quat_cur.w() = rd_cc_.q_virtual_(MODEL_DOF_QVIRTUAL-1);    
+    double angle = quat_cur.angularDistance(Eigen::Quaterniond::Identity()) * 2;
+    double mimic_body_orientation_reward = 0.3 * std::exp(-13.2 * std::abs(angle)); 
+
+    
+    Eigen::Matrix<double, MODEL_DOF, 1> joint_position_target;
+    Eigen::Matrix<double, 2, 1> force_target;
+    double cur_time = std::fmod((rd_cc_.control_time_us_-start_time_)/1e6 + action_dt_accumulate_, 1.7995);
+    int mocap_data_idx = int(cur_time / 0.0005) % 3600;
+    int next_idx = mocap_data_idx + 1;
+    for (int i = 0; i <MODEL_DOF; i++)
+    {
+        joint_position_target(i) = DyrosMath::cubic(cur_time, mocap_data(mocap_data_idx,0), mocap_data(next_idx,0), 
+                                        mocap_data(mocap_data_idx,i+1), mocap_data(next_idx,i+1), 0.0, 0.0);
+    }
+    for (int i = 0; i < 2; i++)
+    {
+        force_target(i) = DyrosMath::cubic(cur_time, mocap_data(mocap_data_idx,0), mocap_data(next_idx,0), 
+                                        mocap_data(mocap_data_idx,i+33), mocap_data(next_idx,i+33), 0.0, 0.0);
+    }
+    double qpos_regulation = 0.35 * std::exp(-2.0 * pow((joint_position_target - q_noise_).norm(),2));
+    double qvel_regulation = 0.05 * std::exp(-0.01 * pow((q_vel_noise_).norm(),2));
+
+    double contact_force_diff_regulation = 0.2 * std::exp(-0.01/250.0*(((rd_cc_.LF_FT-LF_FT_pre_)*(2000.0/frameskip_custom)).norm() + ((rd_cc_.RF_FT-LF_FT_pre_)*(2000.0/frameskip_custom)).norm()));
+    std::cout << "2000.0/frameskip_custom : " << 2000.0/frameskip_custom << " " << typeid(2000.0/frameskip_custom).name()<< std::endl;
+    double torque_regulation = 0.05 * std::exp(-0.01 * (rl_action_.block(0,0,12,1)*333).norm());
+    double torque_diff_regulation = 0.6 * std::exp(-0.01/250.0* ((rl_action_.block(0,0,12,1)-rl_action_pre_.block(0,0,12,1))*(2000.0/frameskip_custom)*333).norm());
+    double qacc_regulation = 0.05 * std::exp(-20.0*pow((q_vel_noise_-q_vel_noise_pre_).norm(),2));
+    Eigen::Vector2d target_vel;
+    Eigen::Vector2d cur_vel;
+    target_vel << 0.4, 0.0;
+    cur_vel << rd_cc_.q_dot_virtual_(0), rd_cc_.q_dot_virtual_(1);
+    double body_vel_reward = 0.3 * std::exp(-3.0 * pow((target_vel - cur_vel).norm(),2));
+    
+    double foot_contact_reward = 0.0;
+    if ((3300 <= mocap_data_idx) & (mocap_data_idx < 3600) || (mocap_data_idx < 300) || ((1500 <= mocap_data_idx) & ( mocap_data_idx < 2100)))
+    {
+        if (abs(rd_cc_.LF_FT(2)) > 100 && abs(rd_cc_.RF_FT(2)) > 100)
+            foot_contact_reward = 0.2;
+    }
+    else if ((300 <= mocap_data_idx) & (mocap_data_idx < 1500))
+    {
+        if (abs(rd_cc_.LF_FT(2)) < 100 && abs(rd_cc_.RF_FT(2)) > 100)
+            foot_contact_reward = 0.2;
+    }    
+    else if ((2100 <= mocap_data_idx) & (mocap_data_idx < 3300))
+    {
+        if (abs(rd_cc_.LF_FT(2)) > 100 && abs(rd_cc_.RF_FT(2)) < 100)
+            foot_contact_reward = 0.2;
+    }
+
+    double force_thres_penalty = 0.0;
+    if (abs(rd_cc_.LF_FT(2)) > 1.4*9.81*100 || abs(rd_cc_.RF_FT(2)) > 1.4*9.81*100)
+    {
+        force_thres_penalty = -0.2;
+    }
+    double contact_force_penalty = 0.1;
+    if (abs(rd_cc_.LF_FT(2)) > 1.4*9.81*100 || abs(rd_cc_.RF_FT(2)) > 1.4*9.81*100)
+    {
+        contact_force_penalty = 0.1*(1-std::exp(-0.007*((min(abs(rd_cc_.LF_FT(2)) - 1.4*9.81*100, 0.0)) \
+                                                            + (min(abs(rd_cc_.RF_FT(2)) - 1.4*9.81*100, 0.0)))));
+    }
+    double force_diff_thres_penalty = 0.0;
+    if (abs(rd_cc_.LF_FT(2)-LF_FT_pre_(2)) > 0.2*9.81*100 || abs(rd_cc_.RF_FT(2)-RF_FT_pre_(2)) > 1.4*9.81*100)
+    {
+        force_diff_thres_penalty = -0.05;
+    }
+    double force_ref_reward = 0.1*std::exp(-0.001*(abs(rd_cc_.LF_FT(2)+force_target(0)))) + 0.1*std::exp(-0.001*(abs(rd_cc_.RF_FT(2)+force_target(1))));
+    
+    // LF_FT_pre_ = rd_cc_.LF_FT;
+    // RF_FT_pre_ = rd_cc_.RF_FT;
+    // rl_action_pre_ = rl_action_;
+    // q_vel_noise_pre_ = q_vel_noise_;
+
+    double total_reward = mimic_body_orientation_reward + qpos_regulation + qvel_regulation + contact_force_penalty + 
+        torque_regulation + torque_diff_regulation + body_vel_reward + qacc_regulation + foot_contact_reward + 
+        contact_force_diff_regulation  + force_thres_penalty + force_diff_thres_penalty + force_ref_reward;
+
+    return total_reward;
 }
 
 void CustomController::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
