@@ -136,7 +136,7 @@ public:
     Eigen::MatrixXd rl_action_pre_;
     Eigen::Matrix<double, MODEL_DOF, 1> q_vel_noise_pre_;
 
-    float freq_scaler_ = 1/125.0;
+    float freq_scaler_ = 1/50.0;
     float freq_tester_2000HZ = 1/2000.0;
     int action_delay = 1;
     int observation_delay = 1;
