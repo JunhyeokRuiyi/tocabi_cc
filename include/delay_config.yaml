@@ -7,5 +7,5 @@ frequnecy:
 target_vel:
   x: 0.5
 result:
-  sim: /home/dyros/tocabi_ws/src/tocabi_cc/result/iserdata_ppt/data_250_speed0.5.csv
+  sim: /home/dyros/tocabi_ws/src/tocabi_cc/result/ijrrdata/data_250
   real: /home/dyros/catkin_ws/data_

@@ -29,6 +29,7 @@ public:
     void processObservation2();
     void feedforwardPolicy();
     void initVariable();
+    double computeReward();
     Eigen::Vector3d mat2euler(Eigen::Matrix3d mat);
 
     static const int num_action = 13;
@@ -119,6 +120,12 @@ public:
     double target_vel_x_ = 0.0;
     double target_vel_x_yaml = 0.0;
     double target_vel_y_ = 0.0;
+    
+    Eigen::MatrixXd mocap_data;
+    Eigen::Vector6d LF_FT_pre_;
+    Eigen::Vector6d RF_FT_pre_;
+    Eigen::MatrixXd rl_action_pre_;
+    Eigen::Matrix<double, MODEL_DOF, 1> q_vel_noise_pre_;
 
     float freq_scaler_ = 1/250;
     float freq_tester_2000HZ = 1/2000.0;
