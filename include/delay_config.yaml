@@ -1,11 +1,11 @@
 delay:
-  action: -0
-  observation: -0
+  action: 25
+  observation: 0
 frequnecy: 
   frameskip_custom: 32
   freq: 62.5
 target_vel:
   x: 0.5
 result:
-  sim: /home/dyros/tocabi_ws/src/tocabi_cc/result/iserdata_ppt/data_250_speed0.5.csv
+  sim: /home/dyros/tocabi_ws/src/tocabi_cc/result/ijrrdata/data_62.5_0.5_delay_o_0_a_25
   real: /home/dyros/catkin_ws/data_
