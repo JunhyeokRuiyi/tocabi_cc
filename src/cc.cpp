@@ -85,7 +85,7 @@ void CustomController::loadNetwork() //rui weight 불러오기 weight TocabiRL �
     {
         cur_path = "/home/dyros/catkin_ws/src/tocabi_cc/";
     }
-    std::ifstream file[14];
+    std::ifstream file[15];
     file[0].open(cur_path+"weight/mlp_extractor_policy_net_0_weight.txt", std::ios::in);
     file[1].open(cur_path+"weight/mlp_extractor_policy_net_0_bias.txt", std::ios::in);
     file[2].open(cur_path+"weight/mlp_extractor_policy_net_2_weight.txt", std::ios::in);
@@ -699,7 +699,7 @@ void CustomController::computeSlow() //rui main
         }
         // //! 2000Hz
 
-        // cout << "a " << action_delay << "o " << observation_delay << " " << endl;
+        cout << "a " << action_delay << "o " << observation_delay << " " << endl;
         
         // //! 2000Hz obs delay
         // ** buffer size should be changed regarding to the policy frequency ** //
