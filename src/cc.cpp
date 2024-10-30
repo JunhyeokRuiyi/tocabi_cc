@@ -59,13 +59,8 @@ CustomController::CustomController(RobotData &rd) : rd_(rd) //, wbc_(dc.wbc_)
     initVariable();
     loadNetwork();
     
-    ros::param::get("/tocabi_controller/ext_time",param_ext_force_time_);
-    ros::param::get("/tocabi_controller/extforce_x",ext_force_x_);
-    ros::param::get("/tocabi_controller/extforce_y",ext_force_y_);
 
     joy_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 10, &CustomController::joyCallback, this);
-    mujoco_ext_force_apply_pub = nh_.advertise<std_msgs::Float32MultiArray>("/tocabi_avatar/applied_ext_force", 10);
-    mujoco_applied_ext_force_.data.resize(7);
 }
 
 Eigen::VectorQd CustomController::getControl()
@@ -85,7 +80,7 @@ void CustomController::loadNetwork() //rui weight 불러오기 weight TocabiRL �
     {
         cur_path = "/home/dyros/catkin_ws/src/tocabi_cc/";
     }
-    std::ifstream file[14];
+    std::ifstream file[15];
     file[0].open(cur_path+"weight/mlp_extractor_policy_net_0_weight.txt", std::ios::in);
     file[1].open(cur_path+"weight/mlp_extractor_policy_net_0_bias.txt", std::ios::in);
     file[2].open(cur_path+"weight/mlp_extractor_policy_net_2_weight.txt", std::ios::in);
@@ -699,7 +694,7 @@ void CustomController::computeSlow() //rui main
         }
         // //! 2000Hz
 
-        // cout << "a " << action_delay << "o " << observation_delay << " " << endl;
+        cout << "a " << action_delay << "o " << observation_delay << " " << endl;
         
         // //! 2000Hz obs delay
         // ** buffer size should be changed regarding to the policy frequency ** //
@@ -838,90 +833,6 @@ void CustomController::computeSlow() //rui main
             rd_.torque_desired = kp_ * (q_stop_ - q_noise_) - kv_*q_vel_noise_;
         }
 
-        walking_tick_mj++;
-
-        for (size_t i = 1; i < 50; i++)
-        {
-            if((walking_tick_mj >= param_ext_force_time_*hz_)  && (walking_tick_mj < (param_ext_force_time_ + 0.2)*hz_))
-            //if((current_step_num_ == 6 && (walking_tick_mj >= t_start_ + t_total_ - 0.1*hz_)) || ((current_step_num_ == 7)  && (walking_tick_mj < t_start_ + 0.1*hz_)))
-            { 
-                std::cout << "ext_force x : " << ext_force_x_ <<  std::endl;
-                mujoco_applied_ext_force_.data[0] = ext_force_x_;
-                mujoco_applied_ext_force_.data[1] = 0.0;
-                mujoco_applied_ext_force_.data[2] =  0.0; //z-axis linear force
-                mujoco_applied_ext_force_.data[3] =  0.0; //x-axis angular moment
-                mujoco_applied_ext_force_.data[4] =  0.0; //y-axis angular moment
-                mujoco_applied_ext_force_.data[5] =  0.0; //z-axis angular moment
-
-                mujoco_applied_ext_force_.data[6] = 1; //link idx; 1:pelvis
-
-                mujoco_ext_force_apply_pub.publish(mujoco_applied_ext_force_);                    
-            } 
-            else if((walking_tick_mj >= (param_ext_force_time_+ 1.8)*hz_)  && (walking_tick_mj < (param_ext_force_time_ + 2.0)*hz_))
-            //if((current_step_num_ == 6 && (walking_tick_mj >= t_start_ + t_total_ - 0.1*hz_)) || ((current_step_num_ == 7)  && (walking_tick_mj < t_start_ + 0.1*hz_)))
-            { 
-                std::cout << "ext_force y : " << ext_force_y_ <<  std::endl;
-                mujoco_applied_ext_force_.data[0] = 0.0;
-                mujoco_applied_ext_force_.data[1] = ext_force_y_;
-                mujoco_applied_ext_force_.data[2] =  0.0; //z-axis linear force
-                mujoco_applied_ext_force_.data[3] =  0.0; //x-axis angular moment
-                mujoco_applied_ext_force_.data[4] =  0.0; //y-axis angular moment
-                mujoco_applied_ext_force_.data[5] =  0.0; //z-axis angular moment
-
-                mujoco_applied_ext_force_.data[6] = 1; //link idx; 1:pelvis
-
-                mujoco_ext_force_apply_pub.publish(mujoco_applied_ext_force_);                    
-            } 
-            else if((walking_tick_mj >= (param_ext_force_time_+ 3.6)*hz_)  && (walking_tick_mj < (param_ext_force_time_ + 3.8)*hz_))
-            //if((current_step_num_ == 6 && (walking_tick_mj >= t_start_ + t_total_ - 0.1*hz_)) || ((current_step_num_ == 7)  && (walking_tick_mj < t_start_ + 0.1*hz_)))
-            { 
-                std::cout << "ext_force x : " << ext_force_x_ <<  std::endl;
-                mujoco_applied_ext_force_.data[0] = -ext_force_x_;
-                mujoco_applied_ext_force_.data[1] = 0.0;
-                mujoco_applied_ext_force_.data[2] =  0.0; //z-axis linear force
-                mujoco_applied_ext_force_.data[3] =  0.0; //x-axis angular moment
-                mujoco_applied_ext_force_.data[4] =  0.0; //y-axis angular moment
-                mujoco_applied_ext_force_.data[5] =  0.0; //z-axis angular moment
-
-                mujoco_applied_ext_force_.data[6] = 1; //link idx; 1:pelvis
-
-                mujoco_ext_force_apply_pub.publish(mujoco_applied_ext_force_);                     
-            } 
-            else if((walking_tick_mj >= (param_ext_force_time_+ 5.4)*hz_)  && (walking_tick_mj < (param_ext_force_time_ + 5.6)*hz_))
-            //if((current_step_num_ == 6 && (walking_tick_mj >= t_start_ + t_total_ - 0.1*hz_)) || ((current_step_num_ == 7)  && (walking_tick_mj < t_start_ + 0.1*hz_)))
-            { 
-                std::cout << "ext_force y : " << ext_force_y_ <<  std::endl;
-                mujoco_applied_ext_force_.data[0] = 0.0;
-                mujoco_applied_ext_force_.data[1] = -ext_force_y_;
-                mujoco_applied_ext_force_.data[2] =  0.0; //z-axis linear force
-                mujoco_applied_ext_force_.data[3] =  0.0; //x-axis angular moment
-                mujoco_applied_ext_force_.data[4] =  0.0; //y-axis angular moment
-                mujoco_applied_ext_force_.data[5] =  0.0; //z-axis angular moment
-
-                mujoco_applied_ext_force_.data[6] = 1; //link idx; 1:pelvis
-
-                mujoco_ext_force_apply_pub.publish(mujoco_applied_ext_force_); 
-                all_force_applied = true;                   
-            } 
-            else
-            {   
-                mujoco_applied_ext_force_.data[0] = 0; //x-axis linear force
-                mujoco_applied_ext_force_.data[1] = 0; //y-axis linear force
-                mujoco_applied_ext_force_.data[2] = 0; //z-axis linear force
-                mujoco_applied_ext_force_.data[3] = 0; //x-axis angular moment
-                mujoco_applied_ext_force_.data[4] = 0; //y-axis angular moment
-                mujoco_applied_ext_force_.data[5] = 0; //z-axis angular moment
-                mujoco_applied_ext_force_.data[6] = 1; //link idx; 1:pelvis
-
-                mujoco_ext_force_apply_pub.publish(mujoco_applied_ext_force_);
-            }
-            if (all_force_applied)
-            {
-                walking_tick_mj = 0;
-                all_force_applied = false;
-            }
-            
-        }
 
     }
 }
