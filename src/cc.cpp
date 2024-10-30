@@ -693,7 +693,7 @@ void CustomController::computeSlow() //rui main
         }
         // //! 2000Hz
 
-        // cout << "a " << action_delay << "o " << observation_delay << " " << endl;
+        cout << "a " << action_delay << "o " << observation_delay << " " << endl;
         
         // //! 2000Hz obs delay
         // ** buffer size should be changed regarding to the policy frequency ** //
